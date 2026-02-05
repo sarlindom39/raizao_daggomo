@@ -12,6 +12,68 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+def verificar_acesso():
+    def processar_login():
+        usuario = st.session_state.get("input_usuario", "").strip().lower()
+        senha = st.session_state.get("input_senha", "")
+        try:
+            usuarios_validos = st.secrets["usuarios"]
+            if usuario in usuarios_validos and usuarios_validos[usuario] == senha:
+                st.session_state["autenticado"] = True
+                st.session_state["usuario_atual"] = usuario
+            else:
+                st.session_state["erro_login"] = True
+        except:
+            st.session_state["erro_login"] = True
+
+    if st.session_state.get("autenticado", False):
+        return True
+
+    st.markdown("""
+    <style>
+    .login-box {
+        max-width: 380px;
+        margin: 80px auto;
+        padding: 2.5rem;
+        background: #FFFFFF;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        border: 1px solid #E2E8F0;
+    }
+    .login-title {
+        text-align: center;
+        color: #0F172A;
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin-bottom: 0.25rem;
+    }
+    .login-subtitle {
+        text-align: center;
+        color: #64748B;
+        font-size: 0.875rem;
+        margin-bottom: 1.5rem;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    col1, col2, col3 = st.columns([1, 1.2, 1])
+    with col2:
+        st.markdown('<div class="login-box">', unsafe_allow_html=True)
+        st.markdown('<p class="login-title">RAÍZAO EXPERIMENT</p>', unsafe_allow_html=True)
+        st.markdown('<p class="login-subtitle">Acesso restrito</p>', unsafe_allow_html=True)
+        st.text_input("Utilizador", key="input_usuario", placeholder="Digite o utilizador")
+        st.text_input("Senha", type="password", key="input_senha", placeholder="Digite a senha")
+        if st.button("Entrar", type="primary", use_container_width=True):
+            processar_login()
+            if st.session_state.get("autenticado"):
+                st.rerun()
+        if st.session_state.get("erro_login", False):
+            st.error("Credenciais inválidas")
+            st.session_state["erro_login"] = False
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    return False
+
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -563,6 +625,9 @@ def processar_analise(modelo, encoders, features, dados_paciente):
 
 
 def main():
+    if not verificar_acesso():
+        st.stop()
+
     col_header1, col_header2 = st.columns([3, 1])
 
     with col_header1:
