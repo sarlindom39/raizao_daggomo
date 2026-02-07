@@ -6,8 +6,8 @@ import time
 from datetime import datetime
 
 st.set_page_config(
-    page_title="RAÍZAO EXPERIMENT",
-    page_icon="",
+    page_title="HemaSakula",
+    page_icon="🩺",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -31,45 +31,160 @@ def verificar_acesso():
 
     st.markdown("""
     <style>
-    .login-box {
-        max-width: 380px;
-        margin: 80px auto;
-        padding: 2.5rem;
-        background: #FFFFFF;
-        border-radius: 12px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-        border: 1px solid #E2E8F0;
+    .stApp {
+        background-color: #0F172A;
     }
-    .login-title {
+
+    [data-testid="stSidebar"] {
+        display: none;
+    }
+
+    .login-wrapper {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 70vh;
+    }
+
+    .login-card {
+        width: 100%;
+        max-width: 400px;
+        background: #FFFFFF;
+        border-radius: 16px;
+        padding: 2.5rem 2.5rem 2rem 2.5rem;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    .login-logo {
         text-align: center;
-        color: #0F172A;
-        font-size: 1.5rem;
-        font-weight: 700;
         margin-bottom: 0.25rem;
     }
-    .login-subtitle {
+
+    .login-logo-icon {
+        width: 48px;
+        height: 48px;
+        background: #312E81;
+        border-radius: 12px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .login-name {
         text-align: center;
+        font-size: 1.6rem;
+        font-weight: 700;
+        color: #0F172A;
+        letter-spacing: -0.025em;
+        margin-bottom: 0.25rem;
+    }
+
+    .login-slogan {
+        text-align: center;
+        font-size: 0.85rem;
         color: #64748B;
-        font-size: 0.875rem;
-        margin-bottom: 1.5rem;
+        font-style: italic;
+        margin-bottom: 0.5rem;
+    }
+
+    .login-divider {
+        height: 1px;
+        background: #E2E8F0;
+        margin: 1.25rem 0;
+    }
+
+    .login-instruction {
+        text-align: center;
+        font-size: 0.8rem;
+        color: #94A3B8;
+        margin-bottom: 1.25rem;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        font-weight: 600;
+    }
+
+    .login-footer {
+        text-align: center;
+        font-size: 0.75rem;
+        color: #94A3B8;
+        margin-top: 1.5rem;
+        line-height: 1.6;
+    }
+
+    .login-wrapper label {
+        color: #334155 !important;
+        font-size: 0.8rem !important;
+        font-weight: 600 !important;
+        letter-spacing: 0.025em;
+    }
+
+    .login-wrapper input {
+        background-color: #F8FAFC !important;
+        border: 1px solid #E2E8F0 !important;
+        border-radius: 8px !important;
+        color: #0F172A !important;
+        padding: 0.6rem 0.75rem !important;
+    }
+
+    .login-wrapper input:focus {
+        border-color: #312E81 !important;
+        box-shadow: 0 0 0 2px rgba(49, 46, 129, 0.15) !important;
+    }
+
+    .login-wrapper button[kind="primary"] {
+        background-color: #312E81 !important;
+        color: #FFFFFF !important;
+        border: none !important;
+        border-radius: 8px !important;
+        font-weight: 600 !important;
+        padding: 0.6rem 1.5rem !important;
+        width: 100%;
+        transition: all 0.2s ease;
+    }
+
+    .login-wrapper button[kind="primary"]:hover {
+        background-color: #3730A3 !important;
     }
     </style>
     """, unsafe_allow_html=True)
 
-    col1, col2, col3 = st.columns([1, 1.2, 1])
+    col1, col2, col3 = st.columns([1.2, 1, 1.2])
     with col2:
-        st.markdown('<div class="login-box">', unsafe_allow_html=True)
-        st.markdown('<p class="login-title">RAÍZAO EXPERIMENT</p>', unsafe_allow_html=True)
-        st.markdown('<p class="login-subtitle">Acesso restrito</p>', unsafe_allow_html=True)
-        st.text_input("Utilizador", key="input_usuario", placeholder="Digite o utilizador")
-        st.text_input("Senha", type="password", key="input_senha", placeholder="Digite a senha")
+        st.markdown('<div class="login-wrapper">', unsafe_allow_html=True)
+        st.markdown('<div class="login-card">', unsafe_allow_html=True)
+
+        st.markdown('''
+        <div class="login-logo">
+            <div class="login-logo-icon">🩺</div>
+        </div>
+        <p class="login-name">HemaSakula</p>
+        <p class="login-slogan">O sangue fala. Nós traduzimos.</p>
+        <div class="login-divider"></div>
+        <p class="login-instruction">Introduza as suas credenciais</p>
+        ''', unsafe_allow_html=True)
+
+        st.text_input("Utilizador", key="input_usuario", placeholder="nome de utilizador")
+        st.text_input("Senha", type="password", key="input_senha", placeholder="código de acesso")
+
         if st.button("Entrar", type="primary", use_container_width=True):
             processar_login()
             if st.session_state.get("autenticado"):
                 st.rerun()
+
         if st.session_state.get("erro_login", False):
             st.error("Credenciais inválidas")
             st.session_state["erro_login"] = False
+
+        st.markdown('''
+        <p class="login-footer">
+            Acesso restrito a profissionais autorizados<br>
+            HemaSakula — Angola 2026
+        </p>
+        ''', unsafe_allow_html=True)
+
+        st.markdown('</div>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
     return False
@@ -631,10 +746,10 @@ def main():
     col_header1, col_header2 = st.columns([3, 1])
 
     with col_header1:
-        st.title("RAÍZAO EXPERIMENT")
+        st.title("HemaSakula")
         st.markdown(
-            '<p style="color: #64748B; font-size: 1rem; margin-top: -0.5rem;">'
-            'Apoio à decisão clínica para Luanda e Icolo e Bengo</p>',
+            '<p style="color: #64748B; font-size: 1rem; margin-top: -0.5rem; font-style: italic;">'
+            'O sangue fala. Nós traduzimos.</p>',
             unsafe_allow_html=True
         )
 
@@ -921,8 +1036,8 @@ def main():
 
     st.markdown('''
     <div class="footer">
-        <strong>RAÍZAO EXPERIMENT</strong><br>
-        Apoio à decisão clínica — Luanda e Icolo e Bengo
+        <strong>HemaSakula</strong><br>
+        O sangue fala. Nós traduzimos.
     </div>
     ''', unsafe_allow_html=True)
 
