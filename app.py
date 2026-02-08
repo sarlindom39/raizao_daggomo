@@ -3,6 +3,8 @@ import pandas as pd
 import numpy as np
 import pickle
 import time
+import json
+import hashlib
 from datetime import datetime
 
 st.set_page_config(
@@ -256,6 +258,17 @@ CONDUTAS = {
     }
 }
 
+# ─────────────────────────────────────────────
+# PERFIS DE EMPRESA (novo sistema)
+# ─────────────────────────────────────────────
+
+PERFIS_USUARIO = {
+    'admin': 'Administrador',
+    'medico': 'Médico',
+    'tecnico': 'Técnico de Laboratório',
+    'enfermeiro': 'Enfermeiro'
+}
+
 
 # ─────────────────────────────────────────────
 # FUNÇÕES AUXILIARES
@@ -367,7 +380,9 @@ def processar_analise(modelo, encoders, features, dados_paciente):
     gravidade = determinar_gravidade(
         dados_paciente['hemoglobina'], dados_paciente['plaquetas']
     )
-    resultados, erro = fazer_predicao(modelo, encoders, features, dados_paciente)
+    resultados, erro = fazer_predicao(
+        modelo, encoders, features, dados_paciente
+    )
 
     progress_bar.empty()
     status_text.empty()
@@ -375,8 +390,299 @@ def processar_analise(modelo, encoders, features, dados_paciente):
     return gravidade, resultados, erro
 
 
+def obter_dados_empresa(usuario):
+    """Busca dados da empresa vinculada ao utilizador."""
+    try:
+        empresas = st.secrets.get("empresas", {})
+        vinculos = st.secrets.get("vinculos", {})
+
+        empresa_id = vinculos.get(usuario, None)
+        if empresa_id and empresa_id in empresas:
+            return empresas[empresa_id]
+        return None
+    except Exception:
+        return None
+
+
+def obter_perfil_usuario(usuario):
+    """Busca o perfil/papel do utilizador."""
+    try:
+        perfis = st.secrets.get("perfis", {})
+        return perfis.get(usuario, "tecnico")
+    except Exception:
+        return "tecnico"
+
+
 # ─────────────────────────────────────────────
-# ECRÃ DE LOGIN
+# CSS DO LOGIN (isolado, só aparece antes de autenticar)
+# ─────────────────────────────────────────────
+
+def aplicar_css_login():
+    st.markdown("""
+    <style>
+    /* ── Reset total da página para o login ── */
+    .stApp {
+        background: linear-gradient(135deg, #0F172A 0%, #1E293B 40%, #312E81 100%);
+        overflow: hidden;
+    }
+
+    /* Esconder TUDO do Streamlit */
+    [data-testid="stSidebar"],
+    header[data-testid="stHeader"],
+    footer,
+    #MainMenu,
+    [data-testid="stToolbar"],
+    .stDeployButton {
+        display: none !important;
+        visibility: hidden !important;
+    }
+
+    /* Remover padding excessivo */
+    .main .block-container {
+        padding: 0 !important;
+        max-width: 100% !important;
+    }
+
+    /* ── Wrapper de fundo com partículas decorativas ── */
+    .login-page-wrapper {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+    }
+
+    .login-page-wrapper::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -20%;
+        width: 600px;
+        height: 600px;
+        background: radial-gradient(circle, rgba(99, 102, 241, 0.08) 0%, transparent 70%);
+        border-radius: 50%;
+        pointer-events: none;
+    }
+
+    .login-page-wrapper::after {
+        content: '';
+        position: absolute;
+        bottom: -30%;
+        left: -10%;
+        width: 400px;
+        height: 400px;
+        background: radial-gradient(circle, rgba(139, 92, 246, 0.06) 0%, transparent 70%);
+        border-radius: 50%;
+        pointer-events: none;
+    }
+
+    /* ── Card de login ── */
+    .login-card {
+        width: 100%;
+        max-width: 440px;
+        background: #FFFFFF;
+        border-radius: 24px;
+        padding: 2.75rem 2.5rem 2.25rem 2.5rem;
+        box-shadow:
+            0 4px 6px rgba(0, 0, 0, 0.05),
+            0 20px 60px rgba(0, 0, 0, 0.15),
+            0 0 0 1px rgba(255, 255, 255, 0.05);
+        position: relative;
+        z-index: 10;
+        animation: loginSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes loginSlideUp {
+        from { opacity: 0; transform: translateY(30px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Ícone do topo ── */
+    .login-brand-icon {
+        width: 64px;
+        height: 64px;
+        background: linear-gradient(135deg, #312E81 0%, #4338CA 100%);
+        border-radius: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        margin: 0 auto 1.5rem auto;
+        box-shadow: 0 8px 24px rgba(49, 46, 129, 0.3);
+        color: white;
+    }
+
+    /* ── Título e subtítulo ── */
+    .login-brand-name {
+        text-align: center;
+        font-size: 2rem;
+        font-weight: 800;
+        color: #0F172A;
+        letter-spacing: -0.03em;
+        margin-bottom: 0.25rem;
+        line-height: 1.2;
+    }
+
+    .login-brand-slogan {
+        text-align: center;
+        font-size: 0.925rem;
+        color: #64748B;
+        font-style: italic;
+        margin-bottom: 2rem;
+        font-weight: 400;
+    }
+
+    /* ── Separador elegante ── */
+    .login-separator {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1.75rem;
+    }
+
+    .login-separator::before,
+    .login-separator::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, #E2E8F0, transparent);
+    }
+
+    .login-separator-text {
+        font-size: 0.7rem;
+        color: #94A3B8;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    /* ── Labels dos inputs ── */
+    .login-label {
+        display: block;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #475569;
+        margin-bottom: 0.4rem;
+        letter-spacing: 0.02em;
+    }
+
+    /* ── Estilo dos inputs Streamlit dentro do login ── */
+    .login-fields-area [data-testid="stTextInput"] > div > div > input {
+        background-color: #F8FAFC !important;
+        border: 1.5px solid #E2E8F0 !important;
+        border-radius: 12px !important;
+        color: #0F172A !important;
+        padding: 0.75rem 1rem !important;
+        font-size: 0.925rem !important;
+        transition: all 0.2s ease !important;
+        font-weight: 400 !important;
+    }
+
+    .login-fields-area [data-testid="stTextInput"] > div > div > input:focus {
+        border-color: #6366F1 !important;
+        box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1) !important;
+        background-color: #FFFFFF !important;
+    }
+
+    .login-fields-area [data-testid="stTextInput"] > div > div > input::placeholder {
+        color: #94A3B8 !important;
+        font-weight: 400 !important;
+    }
+
+    /* Esconder labels padrão do Streamlit nos inputs */
+    .login-fields-area [data-testid="stTextInput"] > label {
+        display: none !important;
+    }
+
+    /* ── Espaçamento entre campos ── */
+    .login-spacer {
+        height: 1rem;
+    }
+
+    .login-spacer-lg {
+        height: 1.5rem;
+    }
+
+    /* ── Botão de entrar ── */
+    .login-fields-area .stButton > button {
+        background: linear-gradient(135deg, #312E81 0%, #4338CA 100%) !important;
+        color: #FFFFFF !important;
+        border: none !important;
+        border-radius: 12px !important;
+        font-weight: 700 !important;
+        font-size: 1rem !important;
+        padding: 0.85rem 2rem !important;
+        width: 100% !important;
+        transition: all 0.25s ease !important;
+        box-shadow: 0 4px 16px rgba(49, 46, 129, 0.35) !important;
+        letter-spacing: 0.02em !important;
+        cursor: pointer !important;
+    }
+
+    .login-fields-area .stButton > button:hover {
+        background: linear-gradient(135deg, #3730A3 0%, #4F46E5 100%) !important;
+        transform: translateY(-2px) !important;
+        box-shadow: 0 8px 28px rgba(49, 46, 129, 0.45) !important;
+    }
+
+    .login-fields-area .stButton > button:active {
+        transform: translateY(0px) !important;
+        box-shadow: 0 2px 8px rgba(49, 46, 129, 0.3) !important;
+    }
+
+    /* ── Erro de login ── */
+    .login-fields-area .stAlert {
+        border-radius: 10px !important;
+        font-size: 0.85rem !important;
+        margin-top: 0.75rem !important;
+    }
+
+    /* ── Rodapé do login ── */
+    .login-footer-text {
+        text-align: center;
+        font-size: 0.75rem;
+        color: #94A3B8;
+        margin-top: 2rem;
+        line-height: 1.8;
+        letter-spacing: 0.01em;
+    }
+
+    .login-footer-text strong {
+        color: #64748B;
+    }
+
+    /* ── Indicador de segurança ── */
+    .login-security {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.4rem;
+        margin-top: 1.25rem;
+        font-size: 0.7rem;
+        color: #94A3B8;
+        letter-spacing: 0.03em;
+    }
+
+    .login-security-dot {
+        width: 6px;
+        height: 6px;
+        background: #22C55E;
+        border-radius: 50%;
+        display: inline-block;
+        animation: securityPulse 2s infinite;
+    }
+
+    @keyframes securityPulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+
+# ─────────────────────────────────────────────
+# ECRÃ DE LOGIN (reconstruído de raiz)
 # ─────────────────────────────────────────────
 
 def verificar_acesso():
@@ -388,6 +694,8 @@ def verificar_acesso():
             if usuario in usuarios_validos and usuarios_validos[usuario] == senha:
                 st.session_state["autenticado"] = True
                 st.session_state["usuario_atual"] = usuario
+                st.session_state["perfil"] = obter_perfil_usuario(usuario)
+                st.session_state["empresa"] = obter_dados_empresa(usuario)
             else:
                 st.session_state["erro_login"] = True
         except Exception:
@@ -396,202 +704,194 @@ def verificar_acesso():
     if st.session_state.get("autenticado", False):
         return True
 
-    # CSS exclusivo para o login — esconde sidebar e estiliza tudo
-    st.markdown(f"""
-    <style>
-    .stApp {{
-        background: linear-gradient(135deg, #0F172A 0%, #1E293B 50%, #312E81 100%);
-    }}
+    # Aplicar CSS exclusivo do login
+    aplicar_css_login()
 
-    [data-testid="stSidebar"] {{
-        display: none !important;
-    }}
+    # Estrutura visual — tudo dentro de colunas para centrar
+    spacer_left, col_login, spacer_right = st.columns([1, 1.4, 1])
 
-    /* Esconder header e footer do Streamlit */
-    header[data-testid="stHeader"] {{
-        display: none !important;
-    }}
-
-    .login-container {{
-        max-width: 420px;
-        margin: 8vh auto 0 auto;
-        background: #FFFFFF;
-        border-radius: 20px;
-        padding: 3rem 2.5rem 2.5rem 2.5rem;
-        box-shadow: 0 25px 80px rgba(0, 0, 0, 0.4);
-    }}
-
-    .login-icon {{
-        width: 56px;
-        height: 56px;
-        background: #312E81;
-        border-radius: 14px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.75rem;
-        margin: 0 auto 1.25rem auto;
-    }}
-
-    .login-title {{
-        text-align: center;
-        font-size: 1.75rem;
-        font-weight: 700;
-        color: #0F172A;
-        letter-spacing: -0.025em;
-        margin-bottom: 0.3rem;
-    }}
-
-    .login-slogan {{
-        text-align: center;
-        font-size: 0.9rem;
-        color: #64748B;
-        font-style: italic;
-        margin-bottom: 1.5rem;
-    }}
-
-    .login-divider {{
-        height: 1px;
-        background: #E2E8F0;
-        margin: 0 0 1.5rem 0;
-    }}
-
-    .login-instruction {{
-        text-align: center;
-        font-size: 0.8rem;
-        color: #94A3B8;
-        margin-bottom: 1.25rem;
-        letter-spacing: 0.05em;
-        text-transform: uppercase;
-        font-weight: 600;
-    }}
-
-    .login-footer {{
-        text-align: center;
-        font-size: 0.75rem;
-        color: #94A3B8;
-        margin-top: 1.75rem;
-        line-height: 1.7;
-    }}
-
-    /* Input fields dentro do login */
-    .login-container label {{
-        color: #334155 !important;
-        font-size: 0.8rem !important;
-        font-weight: 600 !important;
-        letter-spacing: 0.025em;
-    }}
-
-    .login-container input {{
-        background-color: #F8FAFC !important;
-        border: 1.5px solid #E2E8F0 !important;
-        border-radius: 10px !important;
-        color: #0F172A !important;
-        padding: 0.65rem 0.85rem !important;
-        font-size: 0.9rem !important;
-    }}
-
-    .login-container input:focus {{
-        border-color: #312E81 !important;
-        box-shadow: 0 0 0 3px rgba(49, 46, 129, 0.12) !important;
-    }}
-
-    /* Botão de login — usar selector genérico */
-    .stButton > button {{
-        background-color: #312E81 !important;
-        color: #FFFFFF !important;
-        border: none !important;
-        border-radius: 10px !important;
-        font-weight: 600 !important;
-        font-size: 0.95rem !important;
-        padding: 0.7rem 1.5rem !important;
-        width: 100% !important;
-        transition: all 0.2s ease !important;
-        box-shadow: 0 4px 12px rgba(49, 46, 129, 0.3) !important;
-    }}
-
-    .stButton > button:hover {{
-        background-color: #3730A3 !important;
-        transform: translateY(-1px) !important;
-        box-shadow: 0 6px 20px rgba(49, 46, 129, 0.4) !important;
-    }}
-
-    .stButton > button:active {{
-        transform: translateY(0) !important;
-    }}
-    </style>
-    """, unsafe_allow_html=True)
-
-    # Layout centrado com colunas
-    col_left, col_center, col_right = st.columns([1, 2, 1])
-
-    with col_center:
+    with col_login:
+        # Parte superior do card (HTML puro)
         st.markdown(f"""
-        <div class="login-container">
-            <div class="login-icon">🩺</div>
-            <div class="login-title">HemaSakula</div>
-            <div class="login-slogan">{SLOGAN}</div>
-            <div class="login-divider"></div>
-            <div class="login-instruction">Introduza as suas credenciais</div>
-        </div>
+        <div class="login-page-wrapper">
+        <div class="login-card">
+            <div class="login-brand-icon">🩺</div>
+            <div class="login-brand-name">HemaSakula</div>
+            <div class="login-brand-slogan">{SLOGAN}</div>
+
+            <div class="login-separator">
+                <span class="login-separator-text">Acesso ao sistema</span>
+            </div>
+
+            <span class="login-label">Utilizador</span>
         """, unsafe_allow_html=True)
 
-        # Os inputs ficam fora do HTML mas visualmente parecem integrados
-        st.text_input("Utilizador", key="input_usuario", placeholder="nome de utilizador")
-        st.text_input("Senha", type="password", key="input_senha", placeholder="código de acesso")
+        # Campo utilizador — integrado visualmente
+        st.markdown('<div class="login-fields-area">', unsafe_allow_html=True)
+        st.text_input(
+            "Utilizador",
+            key="input_usuario",
+            placeholder="Introduza o seu nome de utilizador",
+            label_visibility="collapsed"
+        )
 
-        if st.button("Entrar", use_container_width=True):
+        st.markdown(
+            '<div class="login-spacer"></div>'
+            '<span class="login-label">Palavra-passe</span>',
+            unsafe_allow_html=True
+        )
+
+        st.text_input(
+            "Senha",
+            type="password",
+            key="input_senha",
+            placeholder="Introduza a sua palavra-passe",
+            label_visibility="collapsed"
+        )
+
+        st.markdown('<div class="login-spacer-lg"></div>', unsafe_allow_html=True)
+
+        # Botão
+        if st.button("Entrar no Sistema", use_container_width=True):
             processar_login()
             if st.session_state.get("autenticado"):
                 st.rerun()
 
+        # Erro de login
         if st.session_state.get("erro_login", False):
-            st.error("Credenciais inválidas. Tente novamente.")
+            st.error("Credenciais inválidas. Verifique o utilizador e a palavra-passe.")
             st.session_state["erro_login"] = False
 
-        st.markdown(f"""
-        <div class="login-footer">
-            Acesso restrito a profissionais autorizados<br>
-            <strong>HemaSakula</strong> — Angola 2026
-        </div>
+        st.markdown('</div>', unsafe_allow_html=True)  # fecha login-fields-area
+
+        # Rodapé do card
+        st.markdown("""
+            <div class="login-security">
+                <span class="login-security-dot"></span>
+                Conexão segura
+            </div>
+
+            <div class="login-footer-text">
+                Acesso restrito a profissionais autorizados<br>
+                <strong>HemaSakula</strong> · Angola 2026
+            </div>
+        </div><!-- fecha login-card -->
+        </div><!-- fecha login-page-wrapper -->
         """, unsafe_allow_html=True)
 
     return False
 
 
 # ─────────────────────────────────────────────
-# CSS GLOBAL (aplicado apenas após login)
+# CSS GLOBAL (aplicado APENAS após login)
 # ─────────────────────────────────────────────
 
 def aplicar_css_global():
     st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
     * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
 
     .stApp { background-color: #F8FAFC; color: #0F172A; }
-    .main .block-container { padding: 2.5rem 4rem; max-width: 1300px; }
+    .main .block-container { padding: 2rem 3.5rem; max-width: 1300px; }
 
-    h1 { color: #0F172A !important; font-weight: 700 !important; font-size: 2rem !important;
-         letter-spacing: -0.025em !important; margin-bottom: 0.5rem !important; }
-    h2 { color: #1E293B !important; font-weight: 600 !important; font-size: 1.35rem !important;
-         margin-top: 2.5rem !important; margin-bottom: 1.25rem !important;
-         padding-bottom: 0.75rem !important; border-bottom: 1px solid #E2E8F0 !important; }
-    h3 { color: #334155 !important; font-weight: 600 !important; font-size: 1.1rem !important;
-         margin-bottom: 1rem !important; }
-
-    label, .stSelectbox label, .stNumberInput label, .stCheckbox label {
-        color: #475569 !important; font-weight: 500 !important; font-size: 0.875rem !important;
+    /* ── Tipografia ── */
+    h1 {
+        color: #0F172A !important; font-weight: 800 !important; font-size: 2rem !important;
+        letter-spacing: -0.03em !important; margin-bottom: 0.25rem !important;
+    }
+    h2 {
+        color: #1E293B !important; font-weight: 700 !important; font-size: 1.3rem !important;
+        margin-top: 2.5rem !important; margin-bottom: 1.25rem !important;
+        padding-bottom: 0.75rem !important; border-bottom: 1px solid #E2E8F0 !important;
+    }
+    h3 {
+        color: #334155 !important; font-weight: 600 !important; font-size: 1.05rem !important;
+        margin-bottom: 1rem !important;
     }
 
-    /* Sidebar */
-    [data-testid="stSidebar"] { background-color: #0F172A; border-right: 1px solid #1E293B; }
+    label, .stSelectbox label, .stNumberInput label, .stCheckbox label {
+        color: #475569 !important; font-weight: 500 !important; font-size: 0.85rem !important;
+    }
+
+    /* ── Barra do topo (user bar) ── */
+    .user-bar {
+        background: #FFFFFF;
+        border: 1px solid #E2E8F0;
+        border-radius: 14px;
+        padding: 0.85rem 1.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.75rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+
+    .user-bar-left {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .user-avatar {
+        width: 38px;
+        height: 38px;
+        background: linear-gradient(135deg, #312E81, #4338CA);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+        color: white;
+        font-weight: 700;
+    }
+
+    .user-name {
+        font-weight: 600;
+        color: #0F172A;
+        font-size: 0.9rem;
+    }
+
+    .user-role {
+        font-size: 0.75rem;
+        color: #64748B;
+    }
+
+    .user-bar-right {
+        display: flex;
+        align-items: center;
+        gap: 1.25rem;
+    }
+
+    .empresa-badge {
+        background: #F0FDF4;
+        border: 1px solid #DCFCE7;
+        color: #166534;
+        padding: 0.3rem 0.75rem;
+        border-radius: 8px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .data-badge {
+        color: #94A3B8;
+        font-size: 0.8rem;
+    }
+
+    /* ── Sidebar ── */
+    [data-testid="stSidebar"] {
+        background-color: #0F172A;
+        border-right: 1px solid #1E293B;
+    }
+
     [data-testid="stSidebar"] h1,
     [data-testid="stSidebar"] h2,
     [data-testid="stSidebar"] h3 {
-        color: #F1F5F9 !important; border-bottom-color: #1E293B !important;
+        color: #F1F5F9 !important;
+        border-bottom-color: #1E293B !important;
     }
+
     [data-testid="stSidebar"] label { color: #CBD5E1 !important; }
     [data-testid="stSidebar"] p,
     [data-testid="stSidebar"] span { color: #94A3B8 !important; }
@@ -600,7 +900,7 @@ def aplicar_css_global():
     [data-testid="stSidebar"] .stNumberInput input {
         background-color: #1E293B !important;
         border: 1px solid #334155 !important;
-        border-radius: 8px !important;
+        border-radius: 10px !important;
         color: #F1F5F9 !important;
     }
 
@@ -610,54 +910,90 @@ def aplicar_css_global():
         color: #F1F5F9 !important;
     }
 
-    [data-testid="stSidebar"] .stCheckbox label span { color: #CBD5E1 !important; }
+    [data-testid="stSidebar"] .stCheckbox label span {
+        color: #CBD5E1 !important;
+    }
 
-    /* Inputs no corpo principal */
+    /* Botão de logout na sidebar */
+    [data-testid="stSidebar"] .stButton > button {
+        background-color: transparent !important;
+        color: #EF4444 !important;
+        border: 1px solid #7F1D1D !important;
+        border-radius: 10px !important;
+        font-weight: 600 !important;
+        font-size: 0.85rem !important;
+        padding: 0.5rem 1rem !important;
+        width: 100% !important;
+        margin-top: 1rem !important;
+        transition: all 0.2s ease !important;
+    }
+
+    [data-testid="stSidebar"] .stButton > button:hover {
+        background-color: #7F1D1D !important;
+        color: #FFFFFF !important;
+    }
+
+    /* ── Inputs no corpo principal ── */
     .stNumberInput input {
         background-color: #FFFFFF !important;
-        border: 1px solid #E2E8F0 !important;
-        border-radius: 8px !important;
+        border: 1.5px solid #E2E8F0 !important;
+        border-radius: 10px !important;
         color: #0F172A !important;
+        transition: border-color 0.2s ease !important;
+    }
+
+    .stNumberInput input:focus {
+        border-color: #6366F1 !important;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1) !important;
     }
 
     .stNumberInput button {
         background-color: #F1F5F9 !important;
         border: 1px solid #E2E8F0 !important;
         color: #475569 !important;
+        border-radius: 8px !important;
     }
 
-    /* Botão do formulário */
+    /* ── Botão do formulário ── */
     .stFormSubmitButton > button {
-        background-color: #312E81 !important;
+        background: linear-gradient(135deg, #312E81 0%, #4338CA 100%) !important;
         color: #FFFFFF !important;
         border: none !important;
-        border-radius: 10px !important;
-        font-weight: 600 !important;
-        font-size: 0.95rem !important;
-        padding: 0.75rem 2.5rem !important;
-        transition: all 0.2s ease !important;
-        box-shadow: 0 4px 12px rgba(49, 46, 129, 0.3) !important;
+        border-radius: 12px !important;
+        font-weight: 700 !important;
+        font-size: 1rem !important;
+        padding: 0.85rem 2.5rem !important;
+        transition: all 0.25s ease !important;
+        box-shadow: 0 4px 16px rgba(49, 46, 129, 0.3) !important;
+        letter-spacing: 0.01em !important;
     }
 
     .stFormSubmitButton > button:hover {
-        background-color: #3730A3 !important;
-        transform: translateY(-1px) !important;
-        box-shadow: 0 6px 20px rgba(49, 46, 129, 0.4) !important;
+        background: linear-gradient(135deg, #3730A3 0%, #4F46E5 100%) !important;
+        transform: translateY(-2px) !important;
+        box-shadow: 0 8px 28px rgba(49, 46, 129, 0.4) !important;
     }
 
-    /* Métricas */
+    /* ── Métricas ── */
     [data-testid="stMetric"] {
         background-color: #FFFFFF;
         border: 1px solid #E2E8F0;
-        border-radius: 12px;
+        border-radius: 14px;
         padding: 1.25rem;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        transition: box-shadow 0.2s ease;
+    }
+
+    [data-testid="stMetric"]:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
     }
 
     [data-testid="stMetric"] label {
         color: #64748B !important;
         font-weight: 600 !important;
-        letter-spacing: 0.05em;
+        letter-spacing: 0.04em;
+        font-size: 0.75rem !important;
+        text-transform: uppercase;
     }
 
     [data-testid="stMetric"] [data-testid="stMetricValue"] {
@@ -665,72 +1001,112 @@ def aplicar_css_global():
         font-weight: 700 !important;
     }
 
-    /* Progress bar */
-    .stProgress > div > div { background-color: #312E81 !important; border-radius: 4px; }
-    .stProgress > div { background-color: #E2E8F0 !important; border-radius: 4px; }
+    /* ── Progress bar ── */
+    .stProgress > div > div {
+        background: linear-gradient(90deg, #312E81, #4338CA) !important;
+        border-radius: 6px;
+    }
+    .stProgress > div {
+        background-color: #E2E8F0 !important;
+        border-radius: 6px;
+    }
 
-    /* Cards e badges */
+    /* ── Cards e badges ── */
     .card {
         background-color: #FFFFFF;
         border: 1px solid #E2E8F0;
-        border-radius: 12px;
+        border-radius: 14px;
         padding: 1.25rem;
         margin-bottom: 1rem;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        transition: box-shadow 0.2s ease;
+    }
+
+    .card:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
     }
 
     .badge {
         display: inline-block;
-        padding: 0.35rem 0.85rem;
-        border-radius: 6px;
+        padding: 0.4rem 0.9rem;
+        border-radius: 8px;
         font-size: 0.75rem;
         font-weight: 700;
-        letter-spacing: 0.025em;
+        letter-spacing: 0.03em;
     }
 
-    .badge-leve { background-color: #F0FDF4; color: #166534; border: 1px solid #DCFCE7; }
-    .badge-moderado { background-color: #FFFBEB; color: #92400E; border: 1px solid #FEF3C7; }
-    .badge-grave { background-color: #FEF2F2; color: #991B1B; border: 1px solid #FEE2E2; }
-    .badge-critico { background-color: #7F1D1D; color: #FFFFFF; }
+    .badge-leve {
+        background-color: #F0FDF4;
+        color: #166534;
+        border: 1px solid #DCFCE7;
+    }
+    .badge-moderado {
+        background-color: #FFFBEB;
+        color: #92400E;
+        border: 1px solid #FEF3C7;
+    }
+    .badge-grave {
+        background-color: #FEF2F2;
+        color: #991B1B;
+        border: 1px solid #FEE2E2;
+    }
+    .badge-critico {
+        background-color: #7F1D1D;
+        color: #FFFFFF;
+        border: 1px solid #991B1B;
+    }
 
     .status-operacional {
         background-color: #F0FDF4;
         border: 1px solid #DCFCE7;
         border-left: 4px solid #166534;
-        border-radius: 8px;
+        border-radius: 10px;
         padding: 1rem 1.25rem;
-        margin: 1.5rem 0;
+        margin: 1.25rem 0;
     }
-    .status-operacional p { margin: 0; color: #166534; font-weight: 600; }
+    .status-operacional p {
+        margin: 0;
+        color: #166534;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
 
     .aviso-institucional {
         background-color: #F8FAFC;
         border: 1px solid #E2E8F0;
         border-left: 4px solid #475569;
-        border-radius: 8px;
+        border-radius: 10px;
         padding: 1.25rem;
-        margin: 1.5rem 0;
+        margin: 1rem 0 1.5rem 0;
     }
-    .aviso-institucional p { margin: 0; color: #334155; font-size: 0.9rem; line-height: 1.6; }
+    .aviso-institucional p {
+        margin: 0;
+        color: #334155;
+        font-size: 0.875rem;
+        line-height: 1.7;
+    }
 
+    /* ── Headers de série ── */
     .serie-vermelha-header {
-        color: #B91C1C !important; font-weight: 700 !important; font-size: 1rem !important;
-        border-bottom: 2px solid #B91C1C; padding-bottom: 0.5rem; margin-bottom: 1.5rem !important;
+        color: #DC2626 !important; font-weight: 700 !important; font-size: 0.95rem !important;
+        border-bottom: 2px solid #DC2626; padding-bottom: 0.5rem;
+        margin-bottom: 1.5rem !important; letter-spacing: 0.02em;
     }
-
     .serie-branca-header {
-        color: #475569 !important; font-weight: 700 !important; font-size: 1rem !important;
-        border-bottom: 2px solid #475569; padding-bottom: 0.5rem; margin-bottom: 1.5rem !important;
+        color: #475569 !important; font-weight: 700 !important; font-size: 0.95rem !important;
+        border-bottom: 2px solid #475569; padding-bottom: 0.5rem;
+        margin-bottom: 1.5rem !important; letter-spacing: 0.02em;
     }
-
     .serie-plaquetas-header {
-        color: #4338CA !important; font-weight: 700 !important; font-size: 1rem !important;
-        border-bottom: 2px solid #4338CA; padding-bottom: 0.5rem; margin-bottom: 1.5rem !important;
+        color: #4338CA !important; font-weight: 700 !important; font-size: 0.95rem !important;
+        border-bottom: 2px solid #4338CA; padding-bottom: 0.5rem;
+        margin-bottom: 1.5rem !important; letter-spacing: 0.02em;
     }
 
+    /* ── Utilidades ── */
     hr { border: none; height: 1px; background-color: #E2E8F0; margin: 2rem 0; }
-    .text-muted { color: #64748B; font-size: 0.875rem; }
-    .text-small { font-size: 0.8125rem; }
+    .text-muted { color: #64748B; font-size: 0.85rem; }
+    .text-small { font-size: 0.8rem; }
 
     .footer {
         text-align: center;
@@ -738,9 +1114,56 @@ def aplicar_css_global():
         margin-top: 3rem;
         border-top: 1px solid #E2E8F0;
         color: #94A3B8;
-        font-size: 0.85rem;
+        font-size: 0.8rem;
+        line-height: 1.8;
+    }
+
+    .footer strong {
+        color: #64748B;
+    }
+
+    /* ── Expander ── */
+    .streamlit-expanderHeader {
+        font-weight: 600 !important;
+        font-size: 0.9rem !important;
+        color: #334155 !important;
     }
     </style>
+    """, unsafe_allow_html=True)
+
+
+# ─────────────────────────────────────────────
+# BARRA DE UTILIZADOR (empresa + perfil)
+# ─────────────────────────────────────────────
+
+def mostrar_barra_usuario():
+    """Mostra a barra superior com dados do utilizador e empresa."""
+    usuario = st.session_state.get("usuario_atual", "utilizador")
+    perfil = st.session_state.get("perfil", "tecnico")
+    empresa = st.session_state.get("empresa", None)
+
+    perfil_nome = PERFIS_USUARIO.get(perfil, "Utilizador")
+    iniciais = usuario[:2].upper()
+
+    empresa_html = ""
+    if empresa:
+        nome_empresa = empresa if isinstance(empresa, str) else empresa.get("nome", "Instituição")
+        empresa_html = f'<span class="empresa-badge">🏥 {nome_empresa}</span>'
+
+    st.markdown(f"""
+    <div class="user-bar">
+        <div class="user-bar-left">
+            <div class="user-avatar">{iniciais}</div>
+            <div>
+                <div class="user-name">{usuario.capitalize()}</div>
+                <div class="user-role">{perfil_nome}</div>
+            </div>
+        </div>
+        <div class="user-bar-right">
+            {empresa_html}
+            <span class="data-badge">{datetime.now().strftime("%d/%m/%Y · %H:%M")}</span>
+        </div>
+    </div>
     """, unsafe_allow_html=True)
 
 
@@ -755,24 +1178,16 @@ def main():
     # Após login, aplicar CSS da app
     aplicar_css_global()
 
+    # Barra de utilizador no topo
+    mostrar_barra_usuario()
+
     # Cabeçalho
-    col_header1, col_header2 = st.columns([3, 1])
-
-    with col_header1:
-        st.title("HemaSakula")
-        st.markdown(
-            f'<p style="color: #64748B; font-size: 1rem; margin-top: -0.5rem; '
-            f'font-style: italic;">{SLOGAN}</p>',
-            unsafe_allow_html=True
-        )
-
-    with col_header2:
-        st.markdown(f"""
-        <div style="text-align: right; padding-top: 1rem; color: #94A3B8;
-             font-size: 0.875rem;">
-            {datetime.now().strftime("%d/%m/%Y")}
-        </div>
-        """, unsafe_allow_html=True)
+    st.title("🩺 HemaSakula")
+    st.markdown(
+        f'<p style="color: #64748B; font-size: 0.95rem; margin-top: -0.75rem; '
+        f'font-style: italic; margin-bottom: 0.5rem;">{SLOGAN}</p>',
+        unsafe_allow_html=True
+    )
 
     st.markdown("""
     <div class="aviso-institucional">
@@ -785,7 +1200,9 @@ def main():
     modelo, encoders, features = carregar_modelo()
 
     if modelo is None:
-        st.error("Modelo não encontrado. Execute primeiro: `python modelo_ml.py`")
+        st.error(
+            "Modelo não encontrado. Execute primeiro: `python modelo_ml.py`"
+        )
         return
 
     st.markdown("""
@@ -803,7 +1220,9 @@ def main():
         sexo = st.selectbox("Sexo biológico", SEXOS)
 
         gestante = False
-        if sexo == 'Feminino' and ('Adulto' in faixa_etaria or 'Adolescente' in faixa_etaria):
+        if sexo == 'Feminino' and (
+            'Adulto' in faixa_etaria or 'Adolescente' in faixa_etaria
+        ):
             gestante = st.checkbox("Grávida")
 
         peso = st.number_input("Peso (kg)", 1.0, 200.0, 65.0, 0.5)
@@ -821,8 +1240,19 @@ def main():
         st.markdown(f"**Estação:** {estacao}")
 
         st.subheader("Antecedentes")
-        status_genetico = st.selectbox("Hemoglobina (genética)", STATUS_GENETICO)
+        status_genetico = st.selectbox(
+            "Hemoglobina (genética)", STATUS_GENETICO
+        )
         mordedura = st.checkbox("Mordedura animal recente")
+
+        # Separador visual
+        st.markdown("---")
+
+        # Botão de logout
+        if st.button("🚪 Terminar Sessão"):
+            for key in list(st.session_state.keys()):
+                del st.session_state[key]
+            st.rerun()
 
     # ── Corpo: hemograma ──
     st.header("Hemograma")
@@ -830,33 +1260,68 @@ def main():
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        st.markdown('<p class="serie-vermelha-header">Série Vermelha</p>', unsafe_allow_html=True)
-        hemoglobina = st.number_input("Hemoglobina (g/dL)", 3.0, 22.0, 12.5, 0.1)
-        hematocrito = st.number_input("Hematócrito (%)", 10.0, 70.0, 38.0, 0.5)
-        hemacias = st.number_input("Eritrócitos (×10⁶/µL)", 2.0, 7.0, 4.5, 0.1)
+        st.markdown(
+            '<p class="serie-vermelha-header">Série Vermelha</p>',
+            unsafe_allow_html=True
+        )
+        hemoglobina = st.number_input(
+            "Hemoglobina (g/dL)", 3.0, 22.0, 12.5, 0.1
+        )
+        hematocrito = st.number_input(
+            "Hematócrito (%)", 10.0, 70.0, 38.0, 0.5
+        )
+        hemacias = st.number_input(
+            "Eritrócitos (×10⁶/µL)", 2.0, 7.0, 4.5, 0.1
+        )
         vcm = st.number_input("VCM (fL)", 50.0, 120.0, 88.0, 1.0)
         hcm = st.number_input("HCM (pg)", 15.0, 40.0, 29.0, 0.5)
         chcm = st.number_input("CHCM (g/dL)", 28.0, 40.0, 33.5, 0.5)
         rdw = st.number_input("RDW (%)", 10.0, 25.0, 13.5, 0.1)
 
     with col2:
-        st.markdown('<p class="serie-branca-header">Série Branca</p>', unsafe_allow_html=True)
-        leucocitos = st.number_input("Leucócitos (/mm³)", 500, 50000, 7500, 100)
-        neutrofilos = st.number_input("Neutrófilos (%)", 10.0, 90.0, 58.0, 1.0)
-        linfocitos = st.number_input("Linfócitos (%)", 5.0, 70.0, 32.0, 1.0)
-        monocitos = st.number_input("Monócitos (%)", 0.0, 20.0, 6.0, 0.5)
-        eosinofilos = st.number_input("Eosinófilos (%)", 0.0, 25.0, 3.0, 0.5)
-        basofilos = st.number_input("Basófilos (%)", 0.0, 3.0, 0.5, 0.1)
+        st.markdown(
+            '<p class="serie-branca-header">Série Branca</p>',
+            unsafe_allow_html=True
+        )
+        leucocitos = st.number_input(
+            "Leucócitos (/mm³)", 500, 50000, 7500, 100
+        )
+        neutrofilos = st.number_input(
+            "Neutrófilos (%)", 10.0, 90.0, 58.0, 1.0
+        )
+        linfocitos = st.number_input(
+            "Linfócitos (%)", 5.0, 70.0, 32.0, 1.0
+        )
+        monocitos = st.number_input(
+            "Monócitos (%)", 0.0, 20.0, 6.0, 0.5
+        )
+        eosinofilos = st.number_input(
+            "Eosinófilos (%)", 0.0, 25.0, 3.0, 0.5
+        )
+        basofilos = st.number_input(
+            "Basófilos (%)", 0.0, 3.0, 0.5, 0.1
+        )
 
-        valido, soma = validar_leucograma(neutrofilos, linfocitos, monocitos, eosinofilos, basofilos)
+        valido, soma = validar_leucograma(
+            neutrofilos, linfocitos, monocitos, eosinofilos, basofilos
+        )
         if not valido:
-            st.warning(f"Diferencial leucocitário soma {soma:.1f}% — esperado ≈ 100%.")
+            st.warning(
+                f"Diferencial leucocitário soma {soma:.1f}% — esperado ≈ 100%."
+            )
 
     with col3:
-        st.markdown('<p class="serie-plaquetas-header">Plaquetas e Outros</p>', unsafe_allow_html=True)
-        plaquetas = st.number_input("Plaquetas (/mm³)", 5000, 1000000, 250000, 5000)
+        st.markdown(
+            '<p class="serie-plaquetas-header">Plaquetas e Outros</p>',
+            unsafe_allow_html=True
+        )
+        plaquetas = st.number_input(
+            "Plaquetas (/mm³)", 5000, 1000000, 250000, 5000
+        )
         vpm = st.number_input("VPM (fL)", 5.0, 15.0, 9.5, 0.5)
-        reticulocitos = st.number_input("Reticulócitos (%)", 0.2, 15.0, 1.2, 0.1)
+        reticulocitos = st.number_input(
+            "Reticulócitos (%)", 0.2, 15.0, 1.2, 0.1
+        )
 
     st.markdown("---")
 
@@ -864,7 +1329,9 @@ def main():
     with st.form(key="form_analise"):
         col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1])
         with col_btn2:
-            submit = st.form_submit_button("Analisar Hemograma", use_container_width=True)
+            submit = st.form_submit_button(
+                "Analisar Hemograma", use_container_width=True
+            )
 
         if submit:
             dados = {
@@ -896,14 +1363,19 @@ def main():
                 'reticulocitos': reticulocitos
             }
 
-            gravidade, resultados, erro = processar_analise(modelo, encoders, features, dados)
+            gravidade, resultados, erro = processar_analise(
+                modelo, encoders, features, dados
+            )
 
             if erro:
                 st.error(f"Erro no processamento: {erro}")
                 return
 
             if not resultados:
-                st.error("Não foi possível gerar resultados. Verifique os dados introduzidos.")
+                st.error(
+                    "Não foi possível gerar resultados. "
+                    "Verifique os dados introduzidos."
+                )
                 return
 
             diag_principal = resultados[0][0]
@@ -937,7 +1409,8 @@ def main():
                          style="text-transform: uppercase; letter-spacing: 0.05em;">
                         Referenciar para
                     </div>
-                    <div style="margin-top: 0.75rem; font-weight: 600; color: #0F172A;">
+                    <div style="margin-top: 0.75rem; font-weight: 600;
+                         color: #0F172A;">
                         {info_mun['hospital']}
                     </div>
                 </div>
@@ -951,13 +1424,14 @@ def main():
                     <div class="card" style="border-left: 4px solid #312E81;">
                         <div style="display: flex; justify-content: space-between;
                              align-items: center;">
-                            <span style="font-size: 1.1rem; font-weight: 600;
+                            <span style="font-size: 1.1rem; font-weight: 700;
                                   color: #0F172A;">
                                 1. {diag}
                             </span>
-                            <span style="background: #312E81; color: white;
-                                  padding: 0.4rem 1rem; border-radius: 6px;
-                                  font-weight: 600;">
+                            <span style="background: linear-gradient(135deg, #312E81, #4338CA);
+                                  color: white; padding: 0.4rem 1rem;
+                                  border-radius: 8px; font-weight: 700;
+                                  font-size: 0.9rem;">
                                 {prob:.1f}%
                             </span>
                         </div>
@@ -989,13 +1463,16 @@ def main():
                     st.info(f"**Conduta:** {cond['leve']}")
 
                 st.markdown(
-                    f'<div class="card"><strong>Exame confirmatório:</strong> '
-                    f'{cond["exame"]}</div>',
+                    f'<div class="card">'
+                    f'<strong>Exame confirmatório:</strong> {cond["exame"]}'
+                    f'</div>',
                     unsafe_allow_html=True
                 )
 
                 if cond['alertas']:
-                    with st.expander("⚠ Sinais de alarme — referenciar imediatamente"):
+                    with st.expander(
+                        "⚠ Sinais de alarme — referenciar imediatamente"
+                    ):
                         for a in cond['alertas']:
                             st.markdown(f"- {a}")
 
@@ -1007,9 +1484,17 @@ def main():
                 _, hb_l = classificar_valor(hemoglobina, 11.5, 16.5)
                 st.metric("Hemoglobina", f"{hemoglobina} g/dL", hb_l)
                 _, plt_l = classificar_valor(plaquetas, 140000, 400000)
-                st.metric("Plaquetas", f"{formatar_numero(plaquetas)}/mm³", plt_l)
+                st.metric(
+                    "Plaquetas",
+                    f"{formatar_numero(plaquetas)}/mm³",
+                    plt_l
+                )
                 _, leu_l = classificar_valor(leucocitos, 4000, 10000)
-                st.metric("Leucócitos", f"{formatar_numero(leucocitos)}/mm³", leu_l)
+                st.metric(
+                    "Leucócitos",
+                    f"{formatar_numero(leucocitos)}/mm³",
+                    leu_l
+                )
 
             with col_l2:
                 _, vcm_l = classificar_valor(vcm, 80, 98)
@@ -1019,7 +1504,9 @@ def main():
                 _, ret_l = classificar_valor(reticulocitos, 0.5, 2.5)
                 st.metric("Reticulócitos", f"{reticulocitos}%", ret_l)
 
-            if status_genetico in ['Traço falciforme (AS)', 'Drepanocitose (SS)']:
+            if status_genetico in [
+                'Traço falciforme (AS)', 'Drepanocitose (SS)'
+            ]:
                 st.warning(
                     f"**Hemoglobinopatia: {status_genetico}.** "
                     f"Seguimento no IHL ou centro de drepanocitose. "
@@ -1038,8 +1525,8 @@ def main():
     # Footer
     st.markdown(f"""
     <div class="footer">
-        <strong>HemaSakula</strong><br>
-        {SLOGAN}
+        <strong>HemaSakula</strong> · {SLOGAN}<br>
+        Angola 2026
     </div>
     """, unsafe_allow_html=True)
 
