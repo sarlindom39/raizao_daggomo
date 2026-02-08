@@ -376,7 +376,7 @@ def processar_analise(modelo, encoders, features, dados_paciente):
 
 
 # ═══════════════════════════════════════════
-# ECRÃ DE LOGIN — REDESENHADO DO ZERO
+# ECRÃ DE LOGIN
 # ═══════════════════════════════════════════
 
 def verificar_acesso():
@@ -396,7 +396,7 @@ def verificar_acesso():
     if st.session_state.get("autenticado", False):
         return True
 
-    # ── CSS COMPLETO DO LOGIN ──
+    # ── CSS DO LOGIN ──
     st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
@@ -404,11 +404,9 @@ def verificar_acesso():
     * { font-family: 'Inter', sans-serif; }
 
     .stApp {
-        background: #000000 !important;
-        overflow: hidden;
+        background: #0B0F19 !important;
     }
 
-    /* Esconder TUDO do Streamlit */
     [data-testid="stSidebar"],
     header[data-testid="stHeader"],
     #MainMenu, footer,
@@ -416,430 +414,179 @@ def verificar_acesso():
         display: none !important;
     }
 
-    /* ── Fundo animado com partículas ── */
-    .login-bg {
-        position: fixed;
-        top: 0; left: 0;
-        width: 100vw; height: 100vh;
-        background: linear-gradient(135deg, #0a0a1a 0%, #1a0a2e 30%, #0d1b2a 60%, #0a0a1a 100%);
-        z-index: 0;
-        overflow: hidden;
+    .main .block-container {
+        max-width: 460px;
+        margin: 0 auto;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
     }
 
-    .login-bg::before {
-        content: '';
-        position: absolute;
-        top: -50%; left: -50%;
-        width: 200%; height: 200%;
-        background:
-            radial-gradient(circle at 20% 50%, rgba(120, 40, 200, 0.08) 0%, transparent 50%),
-            radial-gradient(circle at 80% 20%, rgba(255, 50, 50, 0.06) 0%, transparent 50%),
-            radial-gradient(circle at 50% 80%, rgba(0, 150, 255, 0.05) 0%, transparent 50%);
-        animation: bgPulse 15s ease-in-out infinite;
-    }
-
-    @keyframes bgPulse {
-        0%, 100% { transform: scale(1) rotate(0deg); }
-        50% { transform: scale(1.1) rotate(3deg); }
-    }
-
-    /* Orbes flutuantes */
-    .orb {
-        position: fixed;
-        border-radius: 50%;
-        filter: blur(80px);
-        opacity: 0.15;
-        animation: orbFloat 20s ease-in-out infinite;
-    }
-
-    .orb-1 {
-        width: 400px; height: 400px;
-        background: #7c3aed;
-        top: 10%; left: 5%;
-        animation-delay: 0s;
-    }
-
-    .orb-2 {
-        width: 300px; height: 300px;
-        background: #dc2626;
-        top: 60%; right: 10%;
-        animation-delay: -7s;
-        animation-duration: 25s;
-    }
-
-    .orb-3 {
-        width: 250px; height: 250px;
-        background: #2563eb;
-        bottom: 5%; left: 30%;
-        animation-delay: -12s;
-        animation-duration: 18s;
-    }
-
-    @keyframes orbFloat {
-        0%, 100% { transform: translate(0, 0) scale(1); }
-        25% { transform: translate(30px, -40px) scale(1.1); }
-        50% { transform: translate(-20px, 20px) scale(0.95); }
-        75% { transform: translate(40px, 30px) scale(1.05); }
-    }
-
-    /* ── Layout split ── */
-    .login-wrapper {
-        position: fixed;
-        top: 0; left: 0;
-        width: 100vw; height: 100vh;
-        display: flex;
-        z-index: 10;
-    }
-
-    /* Painel esquerdo — branding */
-    .login-left {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        padding: 3rem;
-        position: relative;
-    }
-
-    .brand-content {
-        text-align: center;
-        position: relative;
-        z-index: 2;
-    }
-
-    .brand-icon {
-        width: 90px;
-        height: 90px;
-        background: linear-gradient(135deg, #7c3aed 0%, #dc2626 100%);
-        border-radius: 24px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 2.8rem;
-        margin: 0 auto 2rem auto;
-        box-shadow: 0 20px 60px rgba(124, 58, 237, 0.3);
-        animation: iconPulse 4s ease-in-out infinite;
-        transform: rotate(-5deg);
-    }
-
-    @keyframes iconPulse {
-        0%, 100% { transform: rotate(-5deg) scale(1); box-shadow: 0 20px 60px rgba(124, 58, 237, 0.3); }
-        50% { transform: rotate(-5deg) scale(1.05); box-shadow: 0 25px 80px rgba(124, 58, 237, 0.4); }
-    }
-
-    .brand-name {
-        font-size: 3.5rem;
-        font-weight: 800;
-        background: linear-gradient(135deg, #FFFFFF 0%, #c4b5fd 50%, #fca5a5 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        letter-spacing: -0.03em;
-        line-height: 1.1;
-        margin-bottom: 0.75rem;
-    }
-
-    .brand-slogan {
-        font-size: 1.15rem;
-        color: rgba(255, 255, 255, 0.5);
-        font-weight: 300;
-        letter-spacing: 0.15em;
-        text-transform: uppercase;
-        margin-bottom: 3rem;
-    }
-
-    /* Estatísticas no painel esquerdo */
-    .brand-stats {
-        display: flex;
-        gap: 2.5rem;
-        margin-top: 1rem;
-    }
-
-    .stat-item {
-        text-align: center;
-    }
-
-    .stat-number {
-        font-size: 1.8rem;
-        font-weight: 700;
-        color: #FFFFFF;
-        line-height: 1;
-    }
-
-    .stat-label {
-        font-size: 0.7rem;
-        color: rgba(255, 255, 255, 0.35);
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
-        margin-top: 0.3rem;
-    }
-
-    /* Separador vertical com glow */
-    .login-divider-v {
-        width: 1px;
-        background: linear-gradient(to bottom, transparent 10%, rgba(124, 58, 237, 0.3) 50%, transparent 90%);
-        position: relative;
-    }
-
-    .login-divider-v::after {
-        content: '';
-        position: absolute;
-        top: 45%; left: -4px;
-        width: 9px; height: 9px;
-        background: #7c3aed;
-        border-radius: 50%;
-        box-shadow: 0 0 20px rgba(124, 58, 237, 0.6);
-    }
-
-    /* Painel direito — formulário */
-    .login-right {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        padding: 3rem;
-    }
-
-    .login-form-wrapper {
-        width: 100%;
-        max-width: 380px;
-    }
-
-    .form-greeting {
-        font-size: 1.6rem;
-        font-weight: 700;
-        color: #FFFFFF;
-        margin-bottom: 0.4rem;
-    }
-
-    .form-subtitle {
-        font-size: 0.95rem;
-        color: rgba(255, 255, 255, 0.4);
-        margin-bottom: 2.5rem;
-        line-height: 1.5;
-    }
-
-    .form-label {
-        font-size: 0.75rem;
-        color: rgba(255, 255, 255, 0.45);
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        font-weight: 600;
-        margin-bottom: 0.5rem;
-        display: block;
-    }
-
-    /* ── Estilizar inputs do Streamlit ── */
-    .stTextInput > div > div > input {
-        background: rgba(255, 255, 255, 0.05) !important;
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
-        border-radius: 12px !important;
-        color: #FFFFFF !important;
-        padding: 0.85rem 1.1rem !important;
-        font-size: 0.95rem !important;
-        transition: all 0.3s ease !important;
-        backdrop-filter: blur(10px);
-    }
-
-    .stTextInput > div > div > input:focus {
-        border-color: #7c3aed !important;
-        box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15),
-                    0 0 30px rgba(124, 58, 237, 0.1) !important;
-        background: rgba(255, 255, 255, 0.08) !important;
-    }
-
-    .stTextInput > div > div > input::placeholder {
-        color: rgba(255, 255, 255, 0.25) !important;
-    }
-
-    /* Labels dos inputs */
+    /* ── Inputs ── */
     .stTextInput > label {
-        color: rgba(255, 255, 255, 0.5) !important;
+        color: rgba(255, 255, 255, 0.45) !important;
         font-size: 0.78rem !important;
         font-weight: 600 !important;
-        letter-spacing: 0.06em !important;
+        letter-spacing: 0.05em !important;
         text-transform: uppercase !important;
     }
 
-    /* ── Botão de login ── */
-    .stButton > button {
-        background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 50%, #5b21b6 100%) !important;
+    .stTextInput > div > div > input {
+        background: rgba(255, 255, 255, 0.06) !important;
+        border: 1px solid rgba(255, 255, 255, 0.12) !important;
+        border-radius: 10px !important;
         color: #FFFFFF !important;
+        padding: 0.8rem 1rem !important;
+        font-size: 0.95rem !important;
+        transition: all 0.25s ease !important;
+    }
+
+    .stTextInput > div > div > input:focus {
+        border-color: rgba(255, 255, 255, 0.35) !important;
+        box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.08) !important;
+        background: rgba(255, 255, 255, 0.09) !important;
+    }
+
+    .stTextInput > div > div > input::placeholder {
+        color: rgba(255, 255, 255, 0.2) !important;
+    }
+
+    /* ── Botão ── */
+    .stButton > button {
+        background: #FFFFFF !important;
+        color: #0B0F19 !important;
         border: none !important;
-        border-radius: 12px !important;
+        border-radius: 10px !important;
         font-weight: 600 !important;
-        font-size: 1rem !important;
-        padding: 0.85rem 2rem !important;
+        font-size: 0.95rem !important;
+        padding: 0.8rem 2rem !important;
         width: 100% !important;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-        box-shadow: 0 8px 30px rgba(124, 58, 237, 0.3) !important;
-        letter-spacing: 0.02em !important;
+        transition: all 0.2s ease !important;
         margin-top: 0.5rem !important;
     }
 
     .stButton > button:hover {
-        transform: translateY(-2px) !important;
-        box-shadow: 0 12px 40px rgba(124, 58, 237, 0.45) !important;
-        background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 50%, #6d28d9 100%) !important;
+        background: #F0F0F0 !important;
+        transform: translateY(-1px) !important;
+        box-shadow: 0 4px 20px rgba(255, 255, 255, 0.1) !important;
     }
 
     .stButton > button:active {
         transform: translateY(0) !important;
     }
 
-    /* ── Rodapé do login ── */
-    .login-footer-new {
-        text-align: center;
-        margin-top: 3rem;
-        padding-top: 2rem;
-        border-top: 1px solid rgba(255, 255, 255, 0.06);
-    }
-
-    .footer-security {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        color: rgba(255, 255, 255, 0.25);
-        font-size: 0.75rem;
-        letter-spacing: 0.03em;
-    }
-
-    .footer-copy {
-        color: rgba(255, 255, 255, 0.15);
-        font-size: 0.7rem;
-        margin-top: 0.75rem;
-        letter-spacing: 0.03em;
-    }
-
     /* ── Alerta de erro ── */
     .stAlert {
-        background: rgba(220, 38, 38, 0.1) !important;
-        border: 1px solid rgba(220, 38, 38, 0.3) !important;
+        background: rgba(220, 50, 50, 0.12) !important;
+        border: 1px solid rgba(220, 50, 50, 0.25) !important;
         border-radius: 10px !important;
-        color: #fca5a5 !important;
-    }
-
-    /* ── Responsivo ── */
-    @media (max-width: 768px) {
-        .login-left { display: none !important; }
-        .login-divider-v { display: none !important; }
-        .login-right { flex: 1; }
-        .brand-name { font-size: 2.5rem; }
-    }
-
-    /* ── Grid lines decorativas ── */
-    .grid-lines {
-        position: fixed;
-        top: 0; left: 0;
-        width: 100vw; height: 100vh;
-        background-image:
-            linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
-        background-size: 60px 60px;
-        z-index: 1;
-        pointer-events: none;
     }
     </style>
     """, unsafe_allow_html=True)
 
-    # ── Elementos de fundo ──
+    # ── Espaço superior ──
+    st.markdown("<div style='height: 6vh;'></div>", unsafe_allow_html=True)
+
+    # ── Cabeçalho visual ──
     st.markdown("""
-    <div class="login-bg"></div>
-    <div class="grid-lines"></div>
-    <div class="orb orb-1"></div>
-    <div class="orb orb-2"></div>
-    <div class="orb orb-3"></div>
-    """, unsafe_allow_html=True)
+    <div style="text-align: center; margin-bottom: 3rem;">
+        <div style="
+            width: 72px; height: 72px;
+            background: #FFFFFF;
+            border-radius: 18px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 2rem;
+            margin: 0 auto 1.5rem auto;
+        ">🩸</div>
 
-    # ── Layout split-screen ──
-    st.markdown("""
-    <div class="login-wrapper">
-        <!-- PAINEL ESQUERDO -->
-        <div class="login-left">
-            <div class="brand-content">
-                <div class="brand-icon">🩸</div>
-                <div class="brand-name">HemaSakula</div>
-                <div class="brand-slogan">Angola a Cuidar dos Seus</div>
-                <div class="brand-stats">
-                    <div class="stat-item">
-                        <div class="stat-number">18</div>
-                        <div class="stat-label">Províncias</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-number">12</div>
-                        <div class="stat-label">Municípios</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-number">10+</div>
-                        <div class="stat-label">Diagnósticos</div>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <div style="
+            font-size: 2.2rem;
+            font-weight: 800;
+            color: #FFFFFF;
+            letter-spacing: -0.03em;
+            line-height: 1.1;
+        ">HemaSakula</div>
 
-        <div class="login-divider-v"></div>
-
-        <!-- PAINEL DIREITO -->
-        <div class="login-right">
-            <div class="login-form-wrapper">
-                <div class="form-greeting">Bem-vindo de volta 👋</div>
-                <div class="form-subtitle">
-                    Entra com as tuas credenciais pra acessar o sistema de apoio ao diagnóstico.
-                </div>
-            </div>
-        </div>
+        <div style="
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.3);
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            margin-top: 0.6rem;
+            font-weight: 400;
+        ">Angola a Cuidar dos Seus</div>
     </div>
     """, unsafe_allow_html=True)
 
-    # ── Formulário real (posicionado sobre o painel direito) ──
+    # ── Linha separadora ──
     st.markdown("""
-    <style>
-    .main .block-container {
-        position: fixed !important;
-        top: 50% !important;
-        right: 5% !important;
-        left: auto !important;
-        transform: translateY(-50%) !important;
-        width: 380px !important;
-        max-width: 380px !important;
-        padding: 0 !important;
-        z-index: 100 !important;
-    }
-
-    @media (max-width: 768px) {
-        .main .block-container {
-            right: 50% !important;
-            transform: translate(50%, -50%) !important;
-        }
-    }
-    </style>
+    <div style="
+        height: 1px;
+        background: rgba(255, 255, 255, 0.08);
+        margin: 0 0 2rem 0;
+    "></div>
     """, unsafe_allow_html=True)
 
-    # Espaço pra alinhar visualmente
-    st.markdown("<div style='height: 2rem;'></div>", unsafe_allow_html=True)
+    # ── Saudação ──
+    hora_actual = datetime.now().hour
+    if hora_actual < 12:
+        saudacao = "Bom dia"
+    elif hora_actual < 18:
+        saudacao = "Boa tarde"
+    else:
+        saudacao = "Boa noite"
 
+    st.markdown(f"""
+    <div style="margin-bottom: 1.8rem;">
+        <div style="
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #FFFFFF;
+            margin-bottom: 0.4rem;
+        ">{saudacao} 👋</div>
+        <div style="
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.35);
+            line-height: 1.5;
+        ">Entra com as tuas credenciais pra acessar o sistema.</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # ── Campos de login ──
     st.text_input("Utilizador", key="input_usuario", placeholder="O teu nome de utilizador")
+
+    st.markdown("<div style='height: 0.3rem;'></div>", unsafe_allow_html=True)
+
     st.text_input("Palavra-passe", type="password", key="input_senha", placeholder="A tua palavra-passe")
 
-    if st.button("Entrar no Sistema", use_container_width=True):
+    st.markdown("<div style='height: 0.5rem;'></div>", unsafe_allow_html=True)
+
+    if st.button("Entrar", use_container_width=True):
         processar_login()
         if st.session_state.get("autenticado"):
             st.rerun()
 
     if st.session_state.get("erro_login", False):
-        st.error("🚫 Epa, essas credenciais não batem certo. Tenta de novo.")
+        st.error("Epa, essas credenciais não batem certo. Tenta de novo.")
         st.session_state["erro_login"] = False
 
+    # ── Rodapé ──
     st.markdown("""
-    <div class="login-footer-new">
-        <div class="footer-security">
-            🔒 Acesso restrito a profissionais autorizados
-        </div>
-        <div class="footer-copy">
-            HemaSakula © Angola 2025 — Todos os direitos reservados
-        </div>
+    <div style="
+        text-align: center;
+        margin-top: 3rem;
+        padding-top: 2rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.06);
+    ">
+        <div style="
+            color: rgba(255, 255, 255, 0.2);
+            font-size: 0.75rem;
+            letter-spacing: 0.02em;
+        ">🔒 Acesso restrito a profissionais autorizados</div>
+        <div style="
+            color: rgba(255, 255, 255, 0.12);
+            font-size: 0.7rem;
+            margin-top: 0.6rem;
+        ">HemaSakula · Angola 2025</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -847,7 +594,7 @@ def verificar_acesso():
 
 
 # ═══════════════════════════════════════════
-# CSS GLOBAL (aplicado apenas após login)
+# CSS GLOBAL (só depois do login)
 # ═══════════════════════════════════════════
 
 def aplicar_css_global():
@@ -857,16 +604,11 @@ def aplicar_css_global():
 
     * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
 
-    .stApp { background-color: #F8FAFC; color: #0F172A; }
+    .stApp { background-color: #F8FAFC !important; color: #0F172A; }
     .main .block-container {
         padding: 2.5rem 4rem;
         max-width: 1300px;
-        position: static !important;
-        top: auto !important;
-        right: auto !important;
-        left: auto !important;
-        transform: none !important;
-        width: auto !important;
+        margin: 0 auto;
     }
 
     h1 { color: #0F172A !important; font-weight: 700 !important; font-size: 2rem !important;
@@ -908,21 +650,21 @@ def aplicar_css_global():
 
     [data-testid="stSidebar"] .stCheckbox label span { color: #CBD5E1 !important; }
 
-    /* Inputs no corpo principal */
-    .stTextInput > div > div > input,
-    .stNumberInput input {
-        background-color: #FFFFFF !important;
-        border: 1px solid #E2E8F0 !important;
-        border-radius: 8px !important;
-        color: #0F172A !important;
-    }
-
+    /* Inputs no corpo */
     .stTextInput > label {
         color: #475569 !important;
         font-size: 0.875rem !important;
         font-weight: 500 !important;
         letter-spacing: normal !important;
         text-transform: none !important;
+    }
+
+    .stTextInput > div > div > input,
+    .stNumberInput input {
+        background-color: #FFFFFF !important;
+        border: 1px solid #E2E8F0 !important;
+        border-radius: 8px !important;
+        color: #0F172A !important;
     }
 
     .stNumberInput button {
@@ -933,7 +675,7 @@ def aplicar_css_global():
 
     /* Botão do formulário */
     .stFormSubmitButton > button {
-        background-color: #312E81 !important;
+        background-color: #1E293B !important;
         color: #FFFFFF !important;
         border: none !important;
         border-radius: 10px !important;
@@ -941,13 +683,11 @@ def aplicar_css_global():
         font-size: 0.95rem !important;
         padding: 0.75rem 2.5rem !important;
         transition: all 0.2s ease !important;
-        box-shadow: 0 4px 12px rgba(49, 46, 129, 0.3) !important;
     }
 
     .stFormSubmitButton > button:hover {
-        background-color: #3730A3 !important;
+        background-color: #334155 !important;
         transform: translateY(-1px) !important;
-        box-shadow: 0 6px 20px rgba(49, 46, 129, 0.4) !important;
     }
 
     /* Métricas */
@@ -960,18 +700,15 @@ def aplicar_css_global():
     }
 
     [data-testid="stMetric"] label {
-        color: #64748B !important;
-        font-weight: 600 !important;
-        letter-spacing: 0.05em;
+        color: #64748B !important; font-weight: 600 !important; letter-spacing: 0.05em;
     }
 
     [data-testid="stMetric"] [data-testid="stMetricValue"] {
-        color: #0F172A !important;
-        font-weight: 700 !important;
+        color: #0F172A !important; font-weight: 700 !important;
     }
 
     /* Progress bar */
-    .stProgress > div > div { background-color: #312E81 !important; border-radius: 4px; }
+    .stProgress > div > div { background-color: #1E293B !important; border-radius: 4px; }
     .stProgress > div { background-color: #E2E8F0 !important; border-radius: 4px; }
 
     /* Cards e badges */
@@ -985,12 +722,8 @@ def aplicar_css_global():
     }
 
     .badge {
-        display: inline-block;
-        padding: 0.35rem 0.85rem;
-        border-radius: 6px;
-        font-size: 0.75rem;
-        font-weight: 700;
-        letter-spacing: 0.025em;
+        display: inline-block; padding: 0.35rem 0.85rem; border-radius: 6px;
+        font-size: 0.75rem; font-weight: 700; letter-spacing: 0.025em;
     }
 
     .badge-leve { background-color: #F0FDF4; color: #166534; border: 1px solid #DCFCE7; }
@@ -999,22 +732,16 @@ def aplicar_css_global():
     .badge-critico { background-color: #7F1D1D; color: #FFFFFF; }
 
     .status-operacional {
-        background-color: #F0FDF4;
-        border: 1px solid #DCFCE7;
-        border-left: 4px solid #166534;
-        border-radius: 8px;
-        padding: 1rem 1.25rem;
-        margin: 1.5rem 0;
+        background-color: #F0FDF4; border: 1px solid #DCFCE7;
+        border-left: 4px solid #166534; border-radius: 8px;
+        padding: 1rem 1.25rem; margin: 1.5rem 0;
     }
     .status-operacional p { margin: 0; color: #166534; font-weight: 600; }
 
     .aviso-institucional {
-        background-color: #F8FAFC;
-        border: 1px solid #E2E8F0;
-        border-left: 4px solid #475569;
-        border-radius: 8px;
-        padding: 1.25rem;
-        margin: 1.5rem 0;
+        background-color: #F8FAFC; border: 1px solid #E2E8F0;
+        border-left: 4px solid #475569; border-radius: 8px;
+        padding: 1.25rem; margin: 1.5rem 0;
     }
     .aviso-institucional p { margin: 0; color: #334155; font-size: 0.9rem; line-height: 1.6; }
 
@@ -1038,12 +765,8 @@ def aplicar_css_global():
     .text-small { font-size: 0.8125rem; }
 
     .footer {
-        text-align: center;
-        padding: 2rem 0;
-        margin-top: 3rem;
-        border-top: 1px solid #E2E8F0;
-        color: #94A3B8;
-        font-size: 0.85rem;
+        text-align: center; padding: 2rem 0; margin-top: 3rem;
+        border-top: 1px solid #E2E8F0; color: #94A3B8; font-size: 0.85rem;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -1057,7 +780,6 @@ def main():
     if not verificar_acesso():
         st.stop()
 
-    # Após login, aplicar CSS da app
     aplicar_css_global()
 
     # Cabeçalho
@@ -1076,16 +798,16 @@ def main():
         st.markdown(f"""
         <div style="text-align: right; padding-top: 0.8rem;">
             <span style="color: #94A3B8; font-size: 0.85rem;">
-                👤 {usuario.capitalize()} &nbsp;·&nbsp; {datetime.now().strftime("%d/%m/%Y")}
+                👤 {usuario.capitalize()} · {datetime.now().strftime("%d/%m/%Y")}
             </span>
         </div>
         """, unsafe_allow_html=True)
 
     st.markdown("""
     <div class="aviso-institucional">
-        <p><strong>⚠️ Nota importante:</strong> Este sistema é uma ferramenta de apoio à decisão clínica.
+        <p><strong>⚠️ Atenção:</strong> Este sistema serve de apoio à decisão clínica.
         Não substitui a avaliação presencial nem o julgamento do profissional de saúde.
-        Os resultados devem ser interpretados dentro do contexto clínico do doente.</p>
+        Interpreta sempre os resultados dentro do contexto clínico do doente.</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -1097,11 +819,11 @@ def main():
 
     st.markdown("""
     <div class="status-operacional">
-        <p>✅ Sistema operacional — modelo carregado com sucesso</p>
+        <p>✅ Tudo a funcionar — modelo carregado com sucesso</p>
     </div>
     """, unsafe_allow_html=True)
 
-    # ── Sidebar: dados do paciente ──
+    # ── Sidebar ──
     with st.sidebar:
         st.header("📋 Dados do Paciente")
 
@@ -1131,7 +853,7 @@ def main():
         status_genetico = st.selectbox("Hemoglobina (genética)", STATUS_GENETICO)
         mordedura = st.checkbox("Mordedura animal recente")
 
-    # ── Corpo: hemograma ──
+    # ── Hemograma ──
     st.header("🔬 Hemograma")
 
     col1, col2, col3 = st.columns(3)
@@ -1157,7 +879,7 @@ def main():
 
         valido, soma = validar_leucograma(neutrofilos, linfocitos, monocitos, eosinofilos, basofilos)
         if not valido:
-            st.warning(f"⚠️ O diferencial leucocitário soma {soma:.1f}% — o esperado é ≈ 100%. Confere os valores.")
+            st.warning(f"⚠️ O diferencial soma {soma:.1f}% — o esperado é ≈ 100%. Confere os valores.")
 
     with col3:
         st.markdown('<p class="serie-plaquetas-header">🟣 Plaquetas e Outros</p>', unsafe_allow_html=True)
@@ -1167,7 +889,7 @@ def main():
 
     st.markdown("---")
 
-    # ── Formulário de análise ──
+    # ── Análise ──
     with st.form(key="form_analise"):
         col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1])
         with col_btn2:
@@ -1210,7 +932,7 @@ def main():
                 return
 
             if not resultados:
-                st.error("❌ Não foi possível gerar resultados. Confere os dados que introduziste.")
+                st.error("❌ Não consegui gerar resultados. Confere os dados que meteste.")
                 return
 
             diag_principal = resultados[0][0]
@@ -1255,14 +977,14 @@ def main():
             for i, (diag, prob) in enumerate(resultados[:3]):
                 if i == 0:
                     st.markdown(f"""
-                    <div class="card" style="border-left: 4px solid #312E81;">
+                    <div class="card" style="border-left: 4px solid #1E293B;">
                         <div style="display: flex; justify-content: space-between;
                              align-items: center;">
                             <span style="font-size: 1.1rem; font-weight: 600;
                                   color: #0F172A;">
                                 1.º {diag}
                             </span>
-                            <span style="background: #312E81; color: white;
+                            <span style="background: #1E293B; color: white;
                                   padding: 0.4rem 1rem; border-radius: 6px;
                                   font-weight: 600;">
                                 {prob:.1f}%
@@ -1291,18 +1013,18 @@ def main():
             if diag_principal in CONDUTAS:
                 cond = CONDUTAS[diag_principal]
                 if gravidade in ["GRAVE", "CRÍTICO"]:
-                    st.error(f"**🚨 Conduta (caso grave):** {cond['grave']}")
+                    st.error(f"**🚨 Caso grave:** {cond['grave']}")
                 else:
                     st.info(f"**💡 Conduta:** {cond['leve']}")
 
                 st.markdown(
-                    f'<div class="card"><strong>🧪 Exame confirmatório:</strong> '
+                    f'<div class="card"><strong>🧪 Exame pra confirmar:</strong> '
                     f'{cond["exame"]}</div>',
                     unsafe_allow_html=True
                 )
 
                 if cond['alertas']:
-                    with st.expander("🚩 Sinais de alarme — referenciar imediatamente"):
+                    with st.expander("🚩 Sinais de alarme — referenciar já"):
                         for a in cond['alertas']:
                             st.markdown(f"- {a}")
 
