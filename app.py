@@ -774,32 +774,52 @@ def css_painel_empresa():
         padding: 2rem 3rem;
     }
 
+    
     [data-testid="stSidebar"] {
         display: block !important;
         background-color: var(--pri) !important;
         border-right: none;
     }
 
+    header[data-testid="stHeader"] {
+        display: block !important;
+        background: transparent !important;
+    }
+    
+    div[data-testid="stDecoration"] {
+        display: none !important;
+    }
+
+    button[data-testid="baseButton-header"] {
+        color: #1A1A18 !important;
+    }
+
+
     [data-testid="stSidebar"] h1,
     [data-testid="stSidebar"] h2,
     [data-testid="stSidebar"] h3 {
         color: #E8E6E1 !important;
-        font-size: 0.7rem !important;
+        font-family: 'Dosis', sans-serif !important; /* Fonte Dosis */
+        font-size: 0.85rem !important;
         font-weight: 700 !important;
         letter-spacing: 0.14em !important;
         text-transform: uppercase !important;
         border-bottom: 1px solid #2A4435 !important;
         padding-bottom: 0.6rem !important;
+        margin-top: 1.5rem !important;
     }
 
     [data-testid="stSidebar"] label {
         color: #8A9B8E !important;
-        font-size: 0.65rem !important;
+        font-family: 'Dosis', sans-serif !important;
+        font-size: 0.8rem !important;
+        font-weight: 600 !important;
     }
 
     [data-testid="stSidebar"] p,
     [data-testid="stSidebar"] span {
         color: #8A9B8E !important;
+        font-family: 'Dosis', sans-serif !important;
     }
 
     [data-testid="stSidebar"] strong {
@@ -858,8 +878,13 @@ def css_painel_empresa():
     [data-testid="stSidebar"] hr {
         border-color: #2A4435 !important;
     }
+    
+    button[kind="header"] {
+        background: transparent !important;
+        border: none !important;
+        color: #E8E6E1 !important;
+    }
     </style>"""
-
 
 def componente_logo(tamanho="grande"):
     if tamanho == "grande":
