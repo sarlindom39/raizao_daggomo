@@ -405,7 +405,7 @@ def processar_analise(modelo, encoders, features, dados_paciente):
 
 def css_global():
     return """<style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Dosis:wght@200;300;400;500;600;700;800&display=swap');
 
     :root {
         --pri: #15291C;
@@ -425,7 +425,9 @@ def css_global():
         --radius: 0px;
     }
 
-    * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important; }
+    /* 2. Aplicação da fonte Dosis em todo o projeto */
+    * { font-family: 'Dosis', sans-serif !important; }
+    
     .stApp { background: var(--bg) !important; }
 
     [data-testid="stSidebar"] { display: none !important; }
@@ -437,7 +439,7 @@ def css_global():
     .stNumberInput > label,
     .stCheckbox > label {
         color: var(--text) !important;
-        font-size: 0.7rem !important;
+        font-size: 0.75rem !important; /* Ajustei ligeiramente pois a Dosis é mais pequena */
         font-weight: 700 !important;
         letter-spacing: 0.14em !important;
         text-transform: uppercase !important;
@@ -450,8 +452,8 @@ def css_global():
         border-radius: var(--radius) !important;
         color: var(--text) !important;
         padding: 1rem 1.1rem !important;
-        font-size: 0.95rem !important;
-        font-weight: 400 !important;
+        font-size: 1rem !important; /* Dosis lê-se melhor um pouco maior */
+        font-weight: 500 !important;
         transition: border-color 0.3s ease, box-shadow 0.3s ease !important;
         -webkit-appearance: none !important;
     }
@@ -495,8 +497,8 @@ def css_global():
 
     div[data-baseweb="select"] span {
         color: var(--text) !important;
-        font-weight: 400 !important;
-        font-size: 0.95rem !important;
+        font-weight: 500 !important;
+        font-size: 1rem !important;
     }
 
     div[data-baseweb="select"] [data-testid="stMarkdownContainer"],
@@ -532,8 +534,8 @@ def css_global():
 
     div[data-baseweb="popover"] li {
         color: var(--text) !important;
-        font-size: 0.9rem !important;
-        font-weight: 400 !important;
+        font-size: 0.95rem !important;
+        font-weight: 500 !important;
         border-radius: var(--radius) !important;
         padding: 10px 14px !important;
         transition: background 0.15s ease !important;
@@ -548,7 +550,7 @@ def css_global():
     div[data-baseweb="select"] [aria-selected="true"] {
         color: var(--text) !important;
         background: var(--sec) !important;
-        font-weight: 600 !important;
+        font-weight: 700 !important;
     }
 
     .stSelectbox [data-baseweb="select"] > div {
@@ -573,7 +575,7 @@ def css_global():
         border: 3px solid var(--border-strong) !important;
         border-radius: var(--radius) !important;
         font-weight: 700 !important;
-        font-size: 0.78rem !important;
+        font-size: 0.85rem !important;
         padding: 1rem 2.4rem !important;
         width: 100% !important;
         letter-spacing: 0.13em !important;
@@ -603,7 +605,7 @@ def css_global():
         border: 3px solid var(--border-strong) !important;
         border-radius: var(--radius) !important;
         font-weight: 700 !important;
-        font-size: 0.78rem !important;
+        font-size: 0.85rem !important;
         padding: 1rem 2.4rem !important;
         letter-spacing: 0.13em !important;
         text-transform: uppercase !important;
@@ -636,7 +638,7 @@ def css_global():
         border-bottom: 3px solid transparent !important;
         border-radius: 0 !important;
         font-weight: 600 !important;
-        font-size: 0.75rem !important;
+        font-size: 0.8rem !important;
         padding: 0.9rem 1.6rem !important;
         letter-spacing: 0.1em !important;
         text-transform: uppercase !important;
@@ -651,7 +653,7 @@ def css_global():
     .stTabs [aria-selected="true"] {
         background: transparent !important;
         color: var(--text) !important;
-        font-weight: 700 !important;
+        font-weight: 800 !important;
         border-bottom: 3px solid var(--text) !important;
         box-shadow: none !important;
     }
@@ -675,7 +677,7 @@ def css_global():
         color: var(--text-muted) !important;
         font-weight: 700 !important;
         letter-spacing: 0.1em;
-        font-size: 0.65rem !important;
+        font-size: 0.7rem !important;
         text-transform: uppercase !important;
     }
 
@@ -723,7 +725,7 @@ def css_global():
 
     .stCheckbox label span[data-testid="stCheckboxLabel"] {
         color: var(--text) !important;
-        font-size: 0.88rem !important;
+        font-size: 0.95rem !important;
     }
 
     [data-testid="stExpander"] {
@@ -742,7 +744,6 @@ def css_global():
     }
 
     </style>"""
-
 
 def css_tela_inicio():
     return """<style>
