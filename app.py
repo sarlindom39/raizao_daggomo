@@ -452,6 +452,11 @@ def css_tela_principal():
     background: #FFFFFF !important;
     outline: none !important;
 }
+.stTextInput > div > div > input:invalid,
+.stTextInput > div > div > input:required {
+    border-color: #E2E8F0 !important;
+    box-shadow: none !important;
+}
 div[data-baseweb="select"] > div {
     border-color: #E2E8F0 !important;
     background: #F8FAFC !important;
@@ -475,8 +480,55 @@ div[data-baseweb="popover"] li:hover {
 div[data-baseweb="select"] span {
     color: #0F172A !important;
 }
+div[data-baseweb="select"] [data-testid="stMarkdownContainer"] {
+    color: #0F172A !important;
+}
+div[data-baseweb="select"] .css-1dimb5e-singleValue,
+div[data-baseweb="select"] [class*="singleValue"] {
+    color: #0F172A !important;
+}
+div[data-baseweb="select"] input {
+    color: #0F172A !important;
+}
+div[data-baseweb="select"] svg {
+    fill: #64748B !important;
+}
+div[data-baseweb="select"] [aria-selected="true"] {
+    color: #0F172A !important;
+    background: #F1F5F9 !important;
+}
+div[data-baseweb="select"] div[role="option"] {
+    color: #0F172A !important;
+}
+.stSelectbox [data-baseweb="select"] > div {
+    color: #0F172A !important;
+}
+.stSelectbox div[data-baseweb="select"] * {
+    color: #0F172A !important;
+}
 .stTextInput > div > div > input::placeholder {
     color: #94A3B8 !important;
+}
+.stTextInput > div > div > input:focus,
+.stNumberInput input:focus {
+    border-color: #94A3B8 !important;
+    box-shadow: 0 0 0 3px rgba(148,163,184,0.12) !important;
+    outline: none !important;
+}
+input:focus, select:focus, textarea:focus,
+[data-baseweb="input"]:focus-within,
+[data-baseweb="select"]:focus-within {
+    border-color: #94A3B8 !important;
+    box-shadow: 0 0 0 3px rgba(148,163,184,0.12) !important;
+    outline: none !important;
+}
+*:focus {
+    outline: none !important;
+    box-shadow: none !important;
+}
+div[data-baseweb="input"]:focus-within {
+    border-color: #94A3B8 !important;
+    box-shadow: 0 0 0 3px rgba(148,163,184,0.12) !important;
 }
 .stButton > button {
     background: #0F172A !important; color: #FFFFFF !important;
@@ -522,6 +574,9 @@ h2 {
     margin-bottom: 0.8rem !important; padding-bottom: 0.5rem !important;
     border-bottom: 1px solid #E2E8F0 !important;
 }
+*:focus { outline: none !important; }
+input:focus, select:focus, textarea:focus { border-color: #94A3B8 !important; box-shadow: 0 0 0 3px rgba(148,163,184,0.12) !important; outline: none !important; }
+input:invalid, input:required { border-color: #E2E8F0 !important; box-shadow: none !important; }
 .stTabs [data-baseweb="tab-list"] {
     gap: 0; background: #F1F5F9; border-radius: 12px; padding: 4px;
 }
@@ -551,6 +606,9 @@ def css_painel_empresa():
     return """<style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+*:focus { outline: none !important; }
+input:focus, select:focus, textarea:focus { border-color: #94A3B8 !important; box-shadow: 0 0 0 3px rgba(148,163,184,0.12) !important; outline: none !important; }
+input:invalid, input:required { border-color: #E2E8F0 !important; box-shadow: none !important; }
 .stApp { background-color: #F8FAFC !important; color: #0F172A; }
 .main .block-container { padding: 2.5rem 4rem; max-width: 1300px; margin: 0 auto; }
 h1 { color: #0F172A !important; font-weight: 700 !important; font-size: 2rem !important; letter-spacing: -0.025em !important; margin-bottom: 0.5rem !important; }
@@ -638,7 +696,7 @@ def tela_boas_vindas():
 
     nome = st.text_input(
         "Como queres que te chamemos?",
-        placeholder="Ex: Maria, João, Kika...",
+        placeholder="Ex: Maria, Jo\u00e3o",
         key="nome_cliente"
     )
 
