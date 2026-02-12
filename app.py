@@ -1,8 +1,3 @@
-# app.py
-# HemaSakula - Angola a Cuidar dos Seus
-# v3.0 - Tela principal acolhedora focada no cliente
-# Login de empresa discreto
-
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -10,266 +5,258 @@ import pickle
 import time
 import json
 import os
+import re
 from datetime import datetime
 
 st.set_page_config(
     page_title="HemaSakula",
-    page_icon="ðŸ©¸",
+    page_icon="🩸",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-SLOGAN = "Angola a Cuidar dos Seus"
-
-# ficheiros de dados locais
 FICHEIRO_CLIENTES = 'dados_clientes.json'
-FICHEIRO_EMPRESAS = 'dados_empresas.json'
 
-# municipios disponiveis
 MUNICIPIOS_LISTA = [
-    'Ingombota', 'Talatona', 'Belas', 'Viana', 'Cacuaco',
-    'Cazenga', 'Kilamba Kiaxi', 'Rangel', 'Maianga', 'Samba',
-    'Catete', 'Icolo e Bengo'
+    'Belas', 'Cacuaco', 'Catete', 'Cazenga', 'Icolo e Bengo',
+    'Ingombota', 'Kilamba Kiaxi', 'Maianga', 'Rangel', 'Samba',
+    'Talatona', 'Viana'
 ]
 
 MUNICIPIOS_INFO = {
     'Ingombota': {'provincia': 'Luanda', 'risco': 'Baixo', 'hospital': 'Hospital Josina Machel'},
-    'Talatona': {'provincia': 'Luanda', 'risco': 'Baixo', 'hospital': 'Clinica Sagrada Esperanca'},
-    'Belas': {'provincia': 'Luanda', 'risco': 'Medio', 'hospital': 'Hospital Americo Boavida'},
-    'Viana': {'provincia': 'Luanda', 'risco': 'Medio', 'hospital': 'Hospital Geral de Viana'},
+    'Talatona': {'provincia': 'Luanda', 'risco': 'Baixo', 'hospital': 'Clínica Sagrada Esperança'},
+    'Belas': {'provincia': 'Luanda', 'risco': 'Médio', 'hospital': 'Hospital Américo Boavida'},
+    'Viana': {'provincia': 'Luanda', 'risco': 'Médio', 'hospital': 'Hospital Geral de Viana'},
     'Cacuaco': {'provincia': 'Luanda', 'risco': 'Alto', 'hospital': 'Hospital Geral de Cacuaco'},
     'Cazenga': {'provincia': 'Luanda', 'risco': 'Muito Alto', 'hospital': 'Hospital Municipal do Cazenga'},
-    'Kilamba Kiaxi': {'provincia': 'Luanda', 'risco': 'Medio', 'hospital': 'Hospital Geral de Luanda'},
-    'Rangel': {'provincia': 'Luanda', 'risco': 'Alto', 'hospital': 'Hospital Americo Boavida'},
-    'Maianga': {'provincia': 'Luanda', 'risco': 'Medio', 'hospital': 'Hospital Josina Machel'},
-    'Samba': {'provincia': 'Luanda', 'risco': 'Medio', 'hospital': 'Hospital Americo Boavida'},
+    'Kilamba Kiaxi': {'provincia': 'Luanda', 'risco': 'Médio', 'hospital': 'Hospital Geral de Luanda'},
+    'Rangel': {'provincia': 'Luanda', 'risco': 'Alto', 'hospital': 'Hospital Américo Boavida'},
+    'Maianga': {'provincia': 'Luanda', 'risco': 'Médio', 'hospital': 'Hospital Josina Machel'},
+    'Samba': {'provincia': 'Luanda', 'risco': 'Médio', 'hospital': 'Hospital Américo Boavida'},
     'Catete': {'provincia': 'Icolo e Bengo', 'risco': 'Alto', 'hospital': 'Hospital Municipal de Catete'},
-    'Icolo e Bengo': {'provincia': 'Icolo e Bengo', 'risco': 'Alto', 'hospital': 'Centro de Saude'}
+    'Icolo e Bengo': {'provincia': 'Icolo e Bengo', 'risco': 'Alto', 'hospital': 'Centro de Saúde'}
 }
 
 FAIXAS_ETARIAS = [
-    'Recem-nascido (0-28 dias)', 'Lactente (1-12 meses)',
-    'Crianca (1-5 anos)', 'Crianca (5-12 anos)',
+    'Recém-nascido (0-28 dias)', 'Lactente (1-12 meses)',
+    'Criança (1-5 anos)', 'Criança (5-12 anos)',
     'Adolescente (12-18 anos)', 'Adulto jovem (18-45 anos)',
     'Adulto (45-65 anos)', 'Idoso (>65 anos)'
 ]
 
 MESES = [
-    'Janeiro', 'Fevereiro', 'Marco', 'Abril', 'Maio', 'Junho',
+    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
     'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
 ]
 
 ESTACOES_POR_MES = {
     'Janeiro': 'Chuvas', 'Fevereiro': 'Chuvas (pico)',
-    'Marco': 'Chuvas (pico)', 'Abril': 'Chuvas (pico)',
+    'Março': 'Chuvas (pico)', 'Abril': 'Chuvas (pico)',
     'Maio': 'Chuvas (a acabar)', 'Junho': 'Cacimbo',
     'Julho': 'Cacimbo', 'Agosto': 'Cacimbo',
-    'Setembro': 'Transicao', 'Outubro': 'Chuvas (inicio)',
+    'Setembro': 'Transição', 'Outubro': 'Chuvas (início)',
     'Novembro': 'Chuvas', 'Dezembro': 'Chuvas'
 }
 
-STATUS_GENETICO = ['Normal', 'Traco falciforme (AS)', 'Drepanocitose (SS)']
+STATUS_GENETICO = ['Normal', 'Traço falciforme (AS)', 'Drepanocitose (SS)']
 SEXOS = ['Masculino', 'Feminino']
 
 CONDUTAS = {
     'Malaria': {
         'leve': (
-            'Coartem (Artemer + Lumefantrina): 4 comprimidos de 12/12h '
-            'durante 3 dias. Tomar sempre com comida, de preferencia com '
-            'gordura pra absorver melhor. Paracetamol pra baixar a febre.'
+            'Coartem (Arteméter + Lumefantrina): 4 comprimidos de 12/12h '
+            'durante 3 dias. Tomar sempre com comida, de preferência com '
+            'gordura para absorver melhor. Paracetamol para baixar a febre.'
         ),
         'grave': (
-            'Artesunato EV 2,4 mg/kg as 0h, 12h e 24h, depois 1x/dia '
-            'ate o doente aguentar via oral. Controlar Hb no dia 7 e 14. '
-            'Se a parasitemia nao baixar em 24h, reavaliar a dose.'
+            'Artesunato EV 2,4 mg/kg às 0h, 12h e 24h, depois 1x/dia '
+            'até o doente aguentar via oral. Controlar Hb no dia 7 e 14. '
+            'Se a parasitemia não baixar em 24h, reavaliar a dose.'
         ),
-        'exame': 'Gota espessa ou teste rapido (TDR)',
+        'exame': 'Gota espessa ou teste rápido (TDR)',
         'alertas': [
-            'Convulsoes',
-            'Prostracao - nao come, nao bebe, nao anda',
-            'Vomitos que nao param',
+            'Convulsões',
+            'Prostração - não come, não bebe, não anda',
+            'Vómitos que não param',
             'Urina escura (cor de coca-cola)',
             'Falta de ar',
-            'Amarelao nos olhos (ictericia)',
-            'Confusao ou perda de consciencia'
+            'Amarelão nos olhos (icterícia)',
+            'Confusão ou perda de consciência'
         ]
     },
     'Dengue': {
         'leve': (
-            'Hidratar bem por via oral (60-80 mL/kg/dia). Paracetamol pra febre. '
+            'Hidratar bem por via oral (60-80 mL/kg/dia). Paracetamol para febre. '
             'Nada de ibuprofeno nem aspirina - pode causar hemorragia.'
         ),
         'grave': (
-            'Soro EV e monitorizar o hematocrito de 2 em 2 horas. Se o Ht subir '
-            'mais de 20%, aumentar o ritmo da hidratacao.'
+            'Soro EV e monitorizar o hematócrito de 2 em 2 horas. Se o Ht subir '
+            'mais de 20%, aumentar o ritmo da hidratação.'
         ),
-        'exame': 'NS1 (fase inicial) ou IgM/IgG (a partir do 5o dia)',
+        'exame': 'NS1 (fase inicial) ou IgM/IgG (a partir do 5.º dia)',
         'alertas': [
-            'Dor de barriga forte que nao passa',
-            'Vomitos sem parar',
+            'Dor de barriga forte que não passa',
+            'Vómitos sem parar',
             'Sangramento na gengiva ou pelo nariz',
-            'Crianca mole demais ou muito irritada'
+            'Criança mole demais ou muito irritada'
         ]
     },
     'Drepanocitose (SS)': {
         'leve': (
-            'Acido folico 5 mg/dia. Beber muita agua. '
-            'Evitar frio e esforco fisico a mais. '
+            'Ácido fólico 5 mg/dia. Beber muita água. '
+            'Evitar frio e esforço físico a mais. '
             'Seguimento regular no IHL ou centro de drepanocitose.'
         ),
         'grave': (
             'Crise vaso-oclusiva: analgesia escalonada (tramadol ou morfina) '
-            '+ soro EV + oxigenio se SpO2 < 95%. '
-            'Referenciar ao IHL com urgencia.'
+            '+ soro EV + oxigénio se SpO2 < 95%. '
+            'Referenciar ao IHL com urgência.'
         ),
         'exame': 'Electroforese de hemoglobina',
         'alertas': [
-            'Febre - num drepanocitico e sempre urgencia',
-            'Dor no peito - pode ser sindrome toracica aguda',
+            'Febre - num drepanocítico é sempre urgência',
+            'Dor no peito - pode ser síndrome torácica aguda',
             'Priapismo',
-            'Sinais de AVC - braco ou perna sem forca, fala enrolada, boca torta'
+            'Sinais de AVC - braço ou perna sem força, fala enrolada, boca torta'
         ]
     },
     'Anemia Ferropriva': {
         'leve': (
             'Sulfato ferroso durante 3 a 6 meses. Tomar em jejum com '
-            'sumo de limao - a vitamina C ajuda a absorver melhor o ferro. '
-            'Avisar que as fezes ficam escuras - e normal, nao se preocupar.'
+            'sumo de limão - a vitamina C ajuda a absorver melhor o ferro. '
+            'Avisar que as fezes ficam escuras - é normal, não se preocupar.'
         ),
         'grave': (
-            'Se a Hb estiver abaixo de 5 g/dL, pensar em transfusao. '
+            'Se a Hb estiver abaixo de 5 g/dL, pensar em transfusão. '
             'Investigar a causa - parasitose? Hemorragia escondida?'
         ),
-        'exame': 'Ferritina serica',
+        'exame': 'Ferritina sérica',
         'alertas': [
             'Falta de ar mesmo parado',
-            'Coracao a bater muito rapido',
-            'Palidez intensa - ver as palmas das maos e os olhos'
+            'Coração a bater muito rápido',
+            'Palidez intensa - ver as palmas das mãos e os olhos'
         ]
     },
     'Colera': {
         'leve': (
             'SRO conforme protocolo da OMS. Preparar 1 saqueta em 1 litro '
-            'de agua tratada. Dar aos poucos, mas com frequencia.'
+            'de água tratada. Dar aos poucos, mas com frequência.'
         ),
         'grave': (
-            'Ringer Lactato EV em bolus ate estabilizar. '
-            'Azitromicina 1 g dose unica. Notificacao obrigatoria a DPS.'
+            'Ringer Lactato EV em bólus até estabilizar. '
+            'Azitromicina 1 g dose única. Notificação obrigatória à DPS.'
         ),
         'exame': 'Coprocultura',
         'alertas': [
             'Olhos fundos, boca seca',
             'Pele que demora a voltar ao lugar (sinal da prega)',
-            'Crianca que ja nao chora com lagrimas',
+            'Criança que já não chora com lágrimas',
             'Muito mole ou muito agitado'
         ]
     },
     'Febre Tifoide': {
         'leve': (
             'Ciprofloxacina 500 mg de 12/12h durante 7 a 14 dias. '
-            'Em criancas, melhor usar azitromicina. '
+            'Em crianças, melhor usar azitromicina. '
             'Hidratar bem e comer leve.'
         ),
         'grave': (
             'Ceftriaxona EV 2 g/dia + internamento. '
-            'Ficar atento a sinais de perfuracao intestinal - '
+            'Ficar atento a sinais de perfuração intestinal - '
             'barriga dura, dor forte, febre em pico.'
         ),
-        'exame': 'Hemocultura (de preferencia) ou coprocultura',
+        'exame': 'Hemocultura (de preferência) ou coprocultura',
         'alertas': [
-            'Barriga dura como tabua - pode ter perfurado',
-            'Confusao mental',
+            'Barriga dura como tábua - pode ter perfurado',
+            'Confusão mental',
             'Sangue nas fezes'
         ]
     },
     'Parasitose Intestinal': {
         'leve': (
-            'Albendazol 400 mg dose unica (acima de 2 anos e adultos). '
+            'Albendazol 400 mg dose única (acima de 2 anos e adultos). '
             'Repetir de 6 em 6 meses. '
-            'Reforcar: lavar as maos e tratar a agua.'
+            'Reforçar: lavar as mãos e tratar a água.'
         ),
         'grave': (
             'Albendazol 400 mg durante 3 dias + sulfato ferroso '
-            'se tiver anemia junto. Quantificar a carga parasitaria.'
+            'se tiver anemia junto. Quantificar a carga parasitária.'
         ),
-        'exame': 'Exame parasitologico de fezes (3 amostras)',
+        'exame': 'Exame parasitológico de fezes (3 amostras)',
         'alertas': [
-            'Barriga muito inchada - risco de obstrucao',
-            'Desnutricao grave, principalmente nas criancas'
+            'Barriga muito inchada - risco de obstrução',
+            'Desnutrição grave, principalmente nas crianças'
         ]
     },
     'Tuberculose': {
         'leve': (
             'Esquema DOTS: fase intensiva com RHZE durante 2 meses, '
             'depois RH por mais 4 meses. Toma observada directamente. '
-            'O doente nao pode largar o tratamento no meio.'
+            'O doente não pode largar o tratamento no meio.'
         ),
         'grave': (
-            'Internamento. Investigar formas fora do pulmao. '
-            'Se for HIV+, coordenar com o TARV - cuidado com as interaccoes.'
+            'Internamento. Investigar formas fora do pulmão. '
+            'Se for HIV+, coordenar com o TARV - cuidado com as interacções.'
         ),
         'exame': 'Baciloscopia (BK) ou GeneXpert',
         'alertas': [
             'Tossir sangue',
             'Perder mais de 10% do peso',
             'Suar muito de noite, a encharcar',
-            'Tosse ha mais de 2 semanas sem melhorar'
+            'Tosse há mais de 2 semanas sem melhorar'
         ]
     },
     'HIV/SIDA': {
         'leve': (
-            'TARV 1a linha: Dolutegravir + Tenofovir + Lamivudina '
-            '(um comprimido por dia). Tomar sempre a mesma hora, sem falhar. '
+            'TARV 1.ª linha: Dolutegravir + Tenofovir + Lamivudina '
+            '(um comprimido por dia). Tomar sempre à mesma hora, sem falhar. '
             'CD4 e carga viral aos 6 meses.'
         ),
         'grave': (
-            'Tratar primeiro a infeccao oportunista que estiver activa. '
-            'Comecar o TARV 2 semanas depois (excepto meningite '
-            'criptococica - ai esperar 4 a 6 semanas). Referenciar ao CTA.'
+            'Tratar primeiro a infecção oportunista que estiver activa. '
+            'Começar o TARV 2 semanas depois (excepto meningite '
+            'criptocócica - aí esperar 4 a 6 semanas). Referenciar ao CTA.'
         ),
-        'exame': 'Teste rapido HIV + CD4 + carga viral',
+        'exame': 'Teste rápido HIV + CD4 + carga viral',
         'alertas': [
-            'Infeccoes oportunistas a repetir',
-            'Perda de peso sem explicacao',
-            'Diarreia ha mais de 1 mes',
-            'Sapinho na boca que nao desaparece'
+            'Infecções oportunistas a repetir',
+            'Perda de peso sem explicação',
+            'Diarreia há mais de 1 mês',
+            'Sapinho na boca que não desaparece'
         ]
     },
     'Raiva (Mordedura)': {
         'leve': (
-            'Lavar a ferida com agua e sabao durante 15 minutos - '
-            'essa medida salva vidas. Vacina anti-rabica nos dias 0, 3, 7 e 14. '
-            'Nao coser a ferida.'
+            'Lavar a ferida com água e sabão durante 15 minutos - '
+            'essa medida salva vidas. Vacina anti-rábica nos dias 0, 3, 7 e 14. '
+            'Não coser a ferida.'
         ),
         'grave': (
-            'Soro anti-rabico + vacina. Nao esperar por resultados. '
+            'Soro anti-rábico + vacina. Não esperar por resultados. '
             'Se o animal morreu ou fugiu, tratar como alto risco. '
             'Cada hora conta.'
         ),
-        'exame': 'Nao esperar confirmacao laboratorial - tratar ja',
+        'exame': 'Não esperar confirmação laboratorial - tratar já',
         'alertas': [
-            'Medo de agua (hidrofobia)',
+            'Medo de água (hidrofobia)',
             'Medo de vento (aerofobia)',
-            'Agitacao e desorientacao',
-            'Se estes sinais ja apareceram, o prognostico e muito reservado'
+            'Agitação e desorientação',
+            'Se estes sinais já apareceram, o prognóstico é muito reservado'
         ]
     },
     'Saudavel': {
         'leve': (
-            'Hemograma dentro dos valores normais. Orientar prevencao: '
-            'rede mosquiteira, agua tratada, desparasitacao regular, '
+            'Hemograma dentro dos valores normais. Orientar prevenção: '
+            'rede mosquiteira, água tratada, desparasitação regular, '
             'vacinas em dia.'
         ),
-        'grave': 'Nao se aplica.',
+        'grave': 'Não se aplica.',
         'exame': 'Sem necessidade de mais exames',
         'alertas': []
     }
 }
 
-
-# =============================================
-# FUNCOES DE DADOS (clientes e empresas)
-# =============================================
 
 def carregar_clientes():
     if os.path.exists(FICHEIRO_CLIENTES):
@@ -285,19 +272,14 @@ def guardar_clientes(dados):
 
 def registar_cliente(nome, telefone, municipio, email=''):
     clientes = carregar_clientes()
-    
     tel_limpo = telefone.replace(' ', '').replace('-', '')
-    
     if tel_limpo in clientes:
-        # cliente ja existe, actualizar e deixar entrar
         clientes[tel_limpo]['nome'] = nome
         clientes[tel_limpo]['municipio'] = municipio
         if email:
             clientes[tel_limpo]['email'] = email
         guardar_clientes(clientes)
-        return True, clientes[tel_limpo], "Bem-vindo de volta!"
-    
-    # novo cliente
+        return True, clientes[tel_limpo]
     cliente = {
         'nome': nome,
         'telefone': tel_limpo,
@@ -307,15 +289,31 @@ def registar_cliente(nome, telefone, municipio, email=''):
         'historico': [],
         'plano': None
     }
-    
     clientes[tel_limpo] = cliente
     guardar_clientes(clientes)
-    return True, cliente, f"Bem-vindo ao HemaSakula, {nome.split()[0]}!"
+    return True, cliente
 
 
-# =============================================
-# FUNCOES DO MODELO ML
-# =============================================
+def validar_email(email):
+    if not email:
+        return True
+    padrao = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    return bool(re.match(padrao, email))
+
+
+def validar_telefone(telefone):
+    numeros = re.sub(r'[^0-9]', '', telefone)
+    return len(numeros) == 9 and numeros[0] == '9'
+
+
+def obter_saudacao():
+    hora = datetime.now().hour
+    if hora < 12:
+        return "Bom dia"
+    elif hora < 18:
+        return "Boa tarde"
+    return "Boa noite"
+
 
 @st.cache_resource
 def carregar_modelo():
@@ -405,8 +403,8 @@ def processar_analise(modelo, encoders, features, dados_paciente):
     etapas = [
         ("A conferir os dados do paciente...", 20),
         ("A analisar os valores do hemograma...", 50),
-        ("A cruzar com dados epidemiologicos da zona...", 80),
-        ("Quase la, a finalizar...", 100)
+        ("A cruzar com dados epidemiológicos da zona...", 80),
+        ("Quase lá, a finalizar...", 100)
     ]
     for texto, progresso in etapas:
         status_text.text(texto)
@@ -421,12 +419,7 @@ def processar_analise(modelo, encoders, features, dados_paciente):
     return gravidade, resultados, erro
 
 
-# =============================================
-# CSS
-# =============================================
-
 def css_tela_principal():
-    """CSS da tela de boas-vindas - branca, limpa, acolhedora"""
     return """<style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 * { font-family: 'Inter', -apple-system, sans-serif; }
@@ -437,8 +430,6 @@ def css_tela_principal():
     max-width: 520px; margin: 0 auto;
     padding-top: 0 !important; padding-bottom: 2rem !important;
 }
-
-/* inputs */
 .stTextInput > label, .stSelectbox > label {
     color: #64748B !important; font-size: 0.82rem !important;
     font-weight: 600 !important; letter-spacing: 0.02em !important;
@@ -452,50 +443,78 @@ def css_tela_principal():
     color: #0F172A !important;
     padding: 0.85rem 1rem !important;
     font-size: 0.95rem !important;
-    transition: all 0.2s ease !important;
+    transition: border-color 0.2s ease !important;
 }
-.stTextInput > div > div > input:focus {
-    border-color: #0F172A !important;
-    box-shadow: 0 0 0 3px rgba(15,23,42,0.06) !important;
+.stTextInput > div > div > input:focus,
+.stSelectbox > div > div:focus-within {
+    border-color: #94A3B8 !important;
+    box-shadow: 0 0 0 3px rgba(148,163,184,0.12) !important;
     background: #FFFFFF !important;
+    outline: none !important;
+}
+div[data-baseweb="select"] > div {
+    border-color: #E2E8F0 !important;
+    background: #F8FAFC !important;
+    border-radius: 12px !important;
+}
+div[data-baseweb="select"] > div:focus-within {
+    border-color: #94A3B8 !important;
+    box-shadow: 0 0 0 3px rgba(148,163,184,0.12) !important;
+}
+div[data-baseweb="popover"] ul {
+    background: #FFFFFF !important;
+    border: 1px solid #E2E8F0 !important;
+    border-radius: 10px !important;
+}
+div[data-baseweb="popover"] li {
+    color: #0F172A !important;
+}
+div[data-baseweb="popover"] li:hover {
+    background: #F1F5F9 !important;
+}
+div[data-baseweb="select"] span {
+    color: #0F172A !important;
 }
 .stTextInput > div > div > input::placeholder {
     color: #94A3B8 !important;
 }
-
-/* botao principal */
 .stButton > button {
     background: #0F172A !important; color: #FFFFFF !important;
     border: none !important; border-radius: 12px !important;
     font-weight: 600 !important; font-size: 1rem !important;
     padding: 0.9rem 2rem !important; width: 100% !important;
-    transition: all 0.2s ease !important; margin-top: 0.5rem !important;
+    margin-top: 0.5rem !important;
     letter-spacing: 0.01em !important;
 }
 .stButton > button:hover {
-    background: #1E293B !important; transform: translateY(-1px) !important;
+    background: #1E293B !important;
     box-shadow: 0 6px 20px rgba(15,23,42,0.12) !important;
 }
-.stButton > button:active { transform: translateY(0) !important; }
-
-/* alertas */
-.stAlert { border-radius: 12px !important; }
+.stButton > button:active {
+    background: #334155 !important;
+}
+.stAlert {
+    border-radius: 12px !important;
+    border: none !important;
+}
+[data-testid="stNotification"] {
+    border-radius: 12px !important;
+}
 </style>"""
 
 
 def css_painel_cliente():
-    """CSS do painel do cliente depois de entrar"""
     return """<style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 * { font-family: 'Inter', -apple-system, sans-serif; }
 .stApp { background-color: #F8FAFC !important; color: #0F172A; }
 [data-testid="stSidebar"] { display: none !important; }
 header[data-testid="stHeader"] { display: none !important; }
+#MainMenu, footer, .stDeployButton { display: none !important; }
 .main .block-container {
     max-width: 800px; margin: 0 auto;
     padding: 1.5rem 2rem;
 }
-
 h1 { color: #0F172A !important; font-weight: 700 !important; font-size: 1.6rem !important; }
 h2 {
     color: #1E293B !important; font-weight: 600 !important;
@@ -503,8 +522,6 @@ h2 {
     margin-bottom: 0.8rem !important; padding-bottom: 0.5rem !important;
     border-bottom: 1px solid #E2E8F0 !important;
 }
-
-/* tabs */
 .stTabs [data-baseweb="tab-list"] {
     gap: 0; background: #F1F5F9; border-radius: 12px; padding: 4px;
 }
@@ -519,13 +536,10 @@ h2 {
     font-weight: 600 !important;
     box-shadow: 0 1px 3px rgba(0,0,0,0.08) !important;
 }
-
-/* botoes */
 .stButton > button {
     background: #0F172A !important; color: #FFFFFF !important;
     border: none !important; border-radius: 10px !important;
     font-weight: 600 !important; font-size: 0.88rem !important;
-    transition: all 0.2s ease !important;
 }
 .stButton > button:hover {
     background: #1E293B !important;
@@ -534,7 +548,6 @@ h2 {
 
 
 def css_painel_empresa():
-    """CSS do painel da empresa (sistema clinico)"""
     return """<style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
@@ -553,9 +566,10 @@ label, .stSelectbox label, .stNumberInput label, .stCheckbox label { color: #475
 [data-testid="stSidebar"] .stCheckbox label span { color: #CBD5E1 !important; }
 .stTextInput > label { color: #475569 !important; font-size: 0.875rem !important; font-weight: 500 !important; letter-spacing: normal !important; text-transform: none !important; }
 .stTextInput > div > div > input, .stNumberInput input { background-color: #FFFFFF !important; border: 1px solid #E2E8F0 !important; border-radius: 8px !important; color: #0F172A !important; }
+.stTextInput > div > div > input:focus, .stNumberInput input:focus { border-color: #94A3B8 !important; box-shadow: 0 0 0 3px rgba(148,163,184,0.12) !important; outline: none !important; }
 .stNumberInput button { background-color: #F1F5F9 !important; border: 1px solid #E2E8F0 !important; color: #475569 !important; }
-.stFormSubmitButton > button { background-color: #1E293B !important; color: #FFFFFF !important; border: none !important; border-radius: 10px !important; font-weight: 600 !important; font-size: 0.95rem !important; padding: 0.75rem 2.5rem !important; transition: all 0.2s ease !important; }
-.stFormSubmitButton > button:hover { background-color: #334155 !important; transform: translateY(-1px) !important; }
+.stFormSubmitButton > button { background-color: #1E293B !important; color: #FFFFFF !important; border: none !important; border-radius: 10px !important; font-weight: 600 !important; font-size: 0.95rem !important; padding: 0.75rem 2.5rem !important; }
+.stFormSubmitButton > button:hover { background-color: #334155 !important; }
 [data-testid="stMetric"] { background-color: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
 [data-testid="stMetric"] label { color: #64748B !important; font-weight: 600 !important; letter-spacing: 0.05em; }
 [data-testid="stMetric"] [data-testid="stMetricValue"] { color: #0F172A !important; font-weight: 700 !important; }
@@ -579,33 +593,13 @@ hr { border: none; height: 1px; background-color: #E2E8F0; margin: 2rem 0; }
 </style>"""
 
 
-# =============================================
-# TELA 1 - BOAS-VINDAS (tela principal)
-# =============================================
-
 def tela_boas_vindas():
-    """
-    Tela principal - acolhedora, focada no cliente
-    Pergunta simples: nome, municipio, telefone, email (opcional)
-    Link discreto para empresas
-    """
     st.markdown(css_tela_principal(), unsafe_allow_html=True)
 
-    # saudacao por hora do dia
-    hora = datetime.now().hour
-    if hora < 12:
-        saudacao = "Bom dia"
-        emoji = "â˜€ï¸"
-    elif hora < 18:
-        saudacao = "Boa tarde"
-        emoji = "ðŸŒ¤ï¸"
-    else:
-        saudacao = "Boa noite"
-        emoji = "ðŸŒ™"
+    saudacao = obter_saudacao()
 
     st.markdown("<div style='height: 4vh;'></div>", unsafe_allow_html=True)
 
-    # logo e marca
     st.markdown('''
     <div style="text-align:center;margin-bottom:2rem;">
         <div style="width:80px;height:80px;background:#0F172A;border-radius:20px;
@@ -625,95 +619,89 @@ def tela_boas_vindas():
     </div>
     ''', unsafe_allow_html=True)
 
-    # separador suave
     st.markdown('''
     <div style="height:1px;background:linear-gradient(90deg,transparent,#E2E8F0,transparent);
                 margin:0.5rem 0 2rem 0;"></div>
     ''', unsafe_allow_html=True)
 
-    # saudacao calorosa
     st.markdown(f'''
     <div style="text-align:center;margin-bottom:2rem;">
         <div style="font-size:1.5rem;font-weight:600;color:#0F172A;margin-bottom:0.5rem;">
-            {saudacao}! {emoji}
+            {saudacao}!
         </div>
         <div style="font-size:1rem;color:#64748B;line-height:1.6;max-width:380px;margin:0 auto;">
-            Encontra clinicas e hospitais perto de ti.
-            Cuida da tua saude com quem te entende.
+            Encontra cl&#237;nicas e hospitais perto de ti.
+            Cuida da tua sa&#250;de com quem te entende.
         </div>
     </div>
     ''', unsafe_allow_html=True)
 
-    # formulario simples
-    st.markdown('''
-    <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:16px;
-                padding:1.8rem;margin-bottom:1.5rem;">
-        <div style="font-size:0.95rem;font-weight:600;color:#0F172A;margin-bottom:1.2rem;">
-            Diz-nos um pouco sobre ti
-        </div>
-    </div>
-    ''', unsafe_allow_html=True)
-
-    # usar container para os campos ficarem dentro do "card" visual
     nome = st.text_input(
         "Como queres que te chamemos?",
-        placeholder="Ex: Maria, Joao, Kika...",
+        placeholder="Ex: Maria, João, Kika...",
         key="nome_cliente"
     )
 
     municipio = st.selectbox(
         "Onde vives?",
         MUNICIPIOS_LISTA,
+        index=None,
+        placeholder="Escolhe o teu município",
         key="municipio_cliente"
     )
 
     telefone = st.text_input(
-        "O teu numero de telefone",
-        placeholder="Ex: 923 456 789",
+        "O teu número de telefone",
+        placeholder="Ex: 9xx xxx xxx",
         key="telefone_cliente"
     )
 
     email = st.text_input(
-        "Email (se tiveres, nao e obrigatorio)",
+        "Email (não é obrigatório)",
         placeholder="exemplo@email.com",
         key="email_cliente"
     )
 
-    # botao principal
-    if st.button("Comecar", key="btn_comecar", use_container_width=True):
-        # validacoes simples
+    if st.button("Começar", key="btn_comecar", use_container_width=True):
+        erros = []
+
         if not nome or not nome.strip():
-            st.error("Precisamos do teu nome para te chamar.")
-        elif not telefone or len(telefone.replace(' ', '').replace('-', '')) < 9:
-            st.error("Mete o teu numero de telefone. Precisamos dele para te contactar.")
+            erros.append("Precisamos do teu nome para te chamar.")
+
+        if not municipio:
+            erros.append("Escolhe o município onde vives.")
+
+        if not telefone:
+            erros.append("O número de telefone é obrigatório.")
+        elif not validar_telefone(telefone):
+            erros.append("O número de telefone deve ter 9 dígitos e começar por 9.")
+
+        if email and email.strip() and not validar_email(email.strip()):
+            erros.append("O email que escreveste não parece válido. Verifica se está correcto.")
+
+        if erros:
+            for erro in erros:
+                st.error(erro)
         else:
-            # registar e entrar
-            sucesso, dados, msg = registar_cliente(
-                nome.strip(), telefone.strip(), municipio, email.strip()
+            sucesso, dados = registar_cliente(
+                nome.strip(), telefone.strip(), municipio, email.strip() if email else ''
             )
             if sucesso:
                 st.session_state['ecra'] = 'cliente'
                 st.session_state['cliente'] = dados
-                st.success(msg)
-                time.sleep(0.5)
                 st.rerun()
-            else:
-                st.error("Algo correu mal. Tenta de novo.")
 
-    # espaco antes do link de empresa
     st.markdown("<div style='height:2rem;'></div>", unsafe_allow_html=True)
 
-    # separador
     st.markdown('''
     <div style="height:1px;background:linear-gradient(90deg,transparent,#E2E8F0,transparent);
                 margin:0 0 1.5rem 0;"></div>
     ''', unsafe_allow_html=True)
 
-    # link discreto para empresas
     st.markdown('''
     <div style="text-align:center;">
         <div style="color:#CBD5E1;font-size:0.78rem;margin-bottom:0.5rem;">
-            Es uma clinica ou hospital?
+            &#201;s uma cl&#237;nica ou hospital?
         </div>
     </div>
     ''', unsafe_allow_html=True)
@@ -724,25 +712,18 @@ def tela_boas_vindas():
             st.session_state['ecra'] = 'login_empresa'
             st.rerun()
 
-    # rodape
     st.markdown('''
-    <div style="text-align:center;margin-top:2.5rem;color:#CBD5E1;font-size:0.72rem;">
-        HemaSakula &middot; Angola 2025
+    <div style="text-align:center;margin-top:3rem;color:#CBD5E1;font-size:0.72rem;">
+        A tua sa&#250;de importa. Estamos aqui por ti.
     </div>
     ''', unsafe_allow_html=True)
 
 
-# =============================================
-# TELA 2 - LOGIN DA EMPRESA (discreto)
-# =============================================
-
 def tela_login_empresa():
-    """Login da empresa - simples, discreto"""
     st.markdown(css_tela_principal(), unsafe_allow_html=True)
 
     st.markdown("<div style='height: 6vh;'></div>", unsafe_allow_html=True)
 
-    # logo pequeno
     st.markdown('''
     <div style="text-align:center;margin-bottom:2rem;">
         <div style="width:56px;height:56px;background:#0F172A;border-radius:14px;
@@ -754,7 +735,7 @@ def tela_login_empresa():
             Acesso Profissional
         </div>
         <div style="font-size:0.82rem;color:#94A3B8;margin-top:0.3rem;">
-            Para clinicas e hospitais parceiros
+            Para cl&#237;nicas e hospitais parceiros
         </div>
     </div>
     ''', unsafe_allow_html=True)
@@ -781,7 +762,6 @@ def tela_login_empresa():
         if not usuario or not senha:
             st.error("Preenche os dois campos.")
         else:
-            # tentar autenticar via secrets
             autenticado = False
             try:
                 usuarios_validos = st.secrets["usuarios"]
@@ -794,15 +774,12 @@ def tela_login_empresa():
             if autenticado:
                 st.session_state['ecra'] = 'empresa'
                 st.session_state['empresa_usuario'] = usuario.strip()
-                st.success("Bem-vindo!")
-                time.sleep(0.3)
                 st.rerun()
             else:
                 st.error("Credenciais incorrectas. Verifica e tenta de novo.")
 
     st.markdown("<div style='height:1.5rem;'></div>", unsafe_allow_html=True)
 
-    # voltar para tela principal
     col_v1, col_v2, col_v3 = st.columns([1, 2, 1])
     with col_v2:
         if st.button("Voltar", key="btn_voltar_login", use_container_width=True):
@@ -816,12 +793,7 @@ def tela_login_empresa():
     ''', unsafe_allow_html=True)
 
 
-# =============================================
-# TELA 3 - PAINEL DO CLIENTE
-# =============================================
-
 def tela_painel_cliente():
-    """Painel do cliente - depois de se identificar"""
     st.markdown(css_painel_cliente(), unsafe_allow_html=True)
 
     cliente = st.session_state.get('cliente', {})
@@ -829,15 +801,8 @@ def tela_painel_cliente():
     municipio = cliente.get('municipio', 'Luanda')
     primeiro_nome = nome.split()[0] if nome else 'Amigo'
 
-    hora = datetime.now().hour
-    if hora < 12:
-        saudacao = "Bom dia"
-    elif hora < 18:
-        saudacao = "Boa tarde"
-    else:
-        saudacao = "Boa noite"
+    saudacao = obter_saudacao()
 
-    # header
     col_h1, col_h2 = st.columns([3, 1])
     with col_h1:
         st.markdown(f'''
@@ -859,22 +824,19 @@ def tela_painel_cliente():
 
     st.markdown("<div style='height:0.5rem;'></div>", unsafe_allow_html=True)
 
-    # tabs
     tab_clinicas, tab_alertas, tab_sobre = st.tabs([
-        "Clinicas perto de mim", "Alertas de saude", "Sobre"
+        "Clínicas perto de mim", "Alertas de saúde", "Sobre"
     ])
 
-    # === TAB CLINICAS ===
     with tab_clinicas:
+        info_mun = MUNICIPIOS_INFO.get(municipio, {})
+        hospital_ref = info_mun.get('hospital', 'Centro de Saúde')
+
         st.markdown(f'''
         <div style="color:#64748B;font-size:0.88rem;margin-bottom:1rem;">
-            Clinicas e hospitais perto de <strong>{municipio}</strong>
+            Cl&#237;nicas e hospitais perto de <strong>{municipio}</strong>
         </div>
         ''', unsafe_allow_html=True)
-
-        # mostrar hospital de referencia do municipio
-        info_mun = MUNICIPIOS_INFO.get(municipio, {})
-        hospital_ref = info_mun.get('hospital', 'Centro de Saude')
 
         st.markdown(f'''
         <div style="background:#FFFFFF;border:1px solid #E2E8F0;border-left:4px solid #0F172A;
@@ -882,66 +844,29 @@ def tela_painel_cliente():
                     box-shadow:0 1px 3px rgba(0,0,0,0.04);">
             <div style="color:#94A3B8;font-size:0.72rem;text-transform:uppercase;
                         letter-spacing:0.05em;margin-bottom:0.4rem;">
-                Hospital de referencia
+                Hospital de refer&#234;ncia
             </div>
             <div style="font-weight:600;color:#0F172A;font-size:1.05rem;">
                 {hospital_ref}
             </div>
             <div style="color:#64748B;font-size:0.82rem;margin-top:0.3rem;">
-                {municipio} &middot; {info_mun.get('provincia', 'Luanda')}
+                {municipio} &#183; {info_mun.get('provincia', 'Luanda')}
             </div>
         </div>
         ''', unsafe_allow_html=True)
 
-        # lista de parceiros (simplificada)
-        parceiros_exemplo = [
-            {
-                'nome': 'Hospital Josina Machel',
-                'tipo': 'Hospital Central',
-                'local': 'Ingombota',
-                'horario': '24 horas',
-                'cor': '#1E40AF'
-            },
-            {
-                'nome': 'Hospital Americo Boavida',
-                'tipo': 'Hospital Central',
-                'local': 'Maianga',
-                'horario': '24 horas',
-                'cor': '#047857'
-            },
-            {
-                'nome': 'Hospital Pediatrico David Bernardino',
-                'tipo': 'Hospital Pediatrico',
-                'local': 'Maianga',
-                'horario': '24 horas',
-                'cor': '#DC2626'
-            },
-            {
-                'nome': 'Clinica Sagrada Esperanca',
-                'tipo': 'Clinica Privada',
-                'local': 'Talatona',
-                'horario': '24 horas',
-                'cor': '#0369A1'
-            },
-            {
-                'nome': 'Clinica Multiperfil',
-                'tipo': 'Clinica Privada',
-                'local': 'Talatona',
-                'horario': '07h-20h',
-                'cor': '#1D4ED8'
-            },
-            {
-                'nome': 'Hospital Geral de Viana',
-                'tipo': 'Hospital Geral',
-                'local': 'Viana',
-                'horario': '24 horas',
-                'cor': '#7C3AED'
-            }
+        parceiros_lista = [
+            {'nome': 'Hospital Josina Machel', 'tipo': 'Hospital Central', 'local': 'Ingombota', 'horario': '24 horas', 'cor': '#1E40AF', 'publico': True},
+            {'nome': 'Hospital Am\u00e9rico Boavida', 'tipo': 'Hospital Central', 'local': 'Maianga', 'horario': '24 horas', 'cor': '#047857', 'publico': True},
+            {'nome': 'Hospital Pedi\u00e1trico David Bernardino', 'tipo': 'Hospital Pedi\u00e1trico', 'local': 'Maianga', 'horario': '24 horas', 'cor': '#DC2626', 'publico': True},
+            {'nome': 'Cl\u00ednica Sagrada Esperan\u00e7a', 'tipo': 'Cl\u00ednica Privada', 'local': 'Talatona', 'horario': '24 horas', 'cor': '#0369A1', 'publico': False},
+            {'nome': 'Cl\u00ednica Multiperfil', 'tipo': 'Cl\u00ednica Privada', 'local': 'Talatona', 'horario': '07h-20h', 'cor': '#1D4ED8', 'publico': False},
+            {'nome': 'Hospital Geral de Viana', 'tipo': 'Hospital Geral', 'local': 'Viana', 'horario': '24 horas', 'cor': '#7C3AED', 'publico': True},
         ]
 
-        for p in parceiros_exemplo:
-            badge_tipo = 'Publico' if 'Hospital' in p['tipo'] and 'Clinica' not in p['tipo'] else 'Privado'
-            badge_cor = '#DBEAFE;color:#1E40AF' if badge_tipo == 'Publico' else '#FEF3C7;color:#92400E'
+        for p in parceiros_lista:
+            badge_tipo = 'P\u00fablico' if p['publico'] else 'Privado'
+            badge_cor = '#DBEAFE;color:#1E40AF' if p['publico'] else '#FEF3C7;color:#92400E'
 
             st.markdown(f'''
             <div style="background:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;
@@ -959,7 +884,7 @@ def tela_painel_cliente():
                             {p['nome']}
                         </div>
                         <div style="color:#64748B;font-size:0.78rem;margin-top:0.15rem;">
-                            {p['local']} &middot; {p['horario']}
+                            {p['local']} &#183; {p['horario']}
                         </div>
                     </div>
                     <div>
@@ -972,18 +897,18 @@ def tela_painel_cliente():
             </div>
             ''', unsafe_allow_html=True)
 
-    # === TAB ALERTAS ===
     with tab_alertas:
+        info_mun = MUNICIPIOS_INFO.get(municipio, {})
         mes_actual = datetime.now().month
-        meses_nome = [
-            '', 'Janeiro', 'Fevereiro', 'Marco', 'Abril', 'Maio', 'Junho',
+        nomes_meses = [
+            '', 'Janeiro', 'Fevereiro', 'Mar\u00e7o', 'Abril', 'Maio', 'Junho',
             'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
         ]
-        mes_nome = meses_nome[mes_actual]
+        mes_nome = nomes_meses[mes_actual]
 
-        risco_mun = info_mun.get('risco', 'Medio')
+        risco_mun = info_mun.get('risco', 'M\u00e9dio')
         cor_risco = {
-            'Baixo': '#059669', 'Medio': '#D97706',
+            'Baixo': '#059669', 'M\u00e9dio': '#D97706',
             'Alto': '#DC2626', 'Muito Alto': '#7F1D1D'
         }
 
@@ -1007,23 +932,22 @@ def tela_painel_cliente():
         </div>
         ''', unsafe_allow_html=True)
 
-        # alertas sazonais
         alertas_mes = {
-            1: "Epoca de chuvas. Cuidado com a colera e a malaria. Bebe sempre agua tratada.",
-            2: "Chuvas fortes. Evita agua parada perto de casa. Dorme com rede mosquiteira.",
-            3: "Pico de malaria. Se tiveres febre, vai ao centro de saude mais proximo.",
-            4: "Ainda ha muitos mosquitos. Usa repelente e rede mosquiteira.",
-            5: "As chuvas estao a acabar. Boa altura para desparasitar.",
+            1: "\u00c9poca de chuvas. Cuidado com a c\u00f3lera e a mal\u00e1ria. Bebe sempre \u00e1gua tratada.",
+            2: "Chuvas fortes. Evita \u00e1gua parada perto de casa. Dorme com rede mosquiteira.",
+            3: "Pico de mal\u00e1ria. Se tiveres febre, vai ao centro de sa\u00fade mais pr\u00f3ximo.",
+            4: "Ainda h\u00e1 muitos mosquitos. Usa repelente e rede mosquiteira.",
+            5: "As chuvas est\u00e3o a acabar. Boa altura para desparasitar.",
             6: "Cacimbo. Agasalha-te bem. Quem tem drepanocitose: cuidado com o frio.",
-            7: "Mes mais frio. Protege as criancas e os idosos.",
-            8: "Se tens tosse ha mais de 2 semanas, faz exame no centro de saude.",
-            9: "Boa altura para um check-up e desparasitacao.",
-            10: "As chuvas voltam. Verifica a rede mosquiteira e trata a agua.",
-            11: "Chuvas. Lembra-te da desparasitacao.",
-            12: "Prepara-te para a epoca chuvosa."
+            7: "M\u00eas mais frio. Protege as crian\u00e7as e os idosos.",
+            8: "Se tens tosse h\u00e1 mais de 2 semanas, faz exame no centro de sa\u00fade.",
+            9: "Boa altura para um check-up e desparasita\u00e7\u00e3o.",
+            10: "As chuvas voltam. Verifica a rede mosquiteira e trata a \u00e1gua.",
+            11: "Chuvas. Lembra-te da desparasita\u00e7\u00e3o.",
+            12: "Prepara-te para a \u00e9poca chuvosa."
         }
 
-        alerta_txt = alertas_mes.get(mes_actual, "Cuida da tua saude!")
+        alerta_txt = alertas_mes.get(mes_actual, "Cuida da tua sa\u00fade!")
 
         st.markdown(f'''
         <div style="background:#FFFBEB;border:1px solid #FEF3C7;border-left:4px solid #F59E0B;
@@ -1037,13 +961,12 @@ def tela_painel_cliente():
         </div>
         ''', unsafe_allow_html=True)
 
-        # dicas gerais
         dicas = [
             ("Rede mosquiteira", "Dorme sempre debaixo de uma rede mosquiteira, mesmo no cacimbo."),
-            ("Agua tratada", "Ferve ou trata a agua antes de beber. Protege contra colera e tifoide."),
-            ("Desparasitacao", "Toma Albendazol de 6 em 6 meses. Para adultos e criancas acima de 2 anos."),
-            ("Vacinas", "Verifica se as vacinas das criancas estao em dia."),
-            ("Drepanocitose", "Se ha casos na familia, faz o teste antes de ter filhos.")
+            ("\u00c1gua tratada", "Ferve ou trata a \u00e1gua antes de beber. Protege contra c\u00f3lera e tif\u00f3ide."),
+            ("Desparasita\u00e7\u00e3o", "Toma Albendazol de 6 em 6 meses. Para adultos e crian\u00e7as acima de 2 anos."),
+            ("Vacinas", "Verifica se as vacinas das crian\u00e7as est\u00e3o em dia."),
+            ("Drepanocitose", "Se h\u00e1 casos na fam\u00edlia, faz o teste antes de ter filhos.")
         ]
 
         for titulo, texto in dicas:
@@ -1055,7 +978,6 @@ def tela_painel_cliente():
             </div>
             ''', unsafe_allow_html=True)
 
-    # === TAB SOBRE ===
     with tab_sobre:
         st.markdown('''
         <div style="text-align:center;padding:2rem 0;">
@@ -1073,41 +995,34 @@ def tela_painel_cliente():
         </div>
         ''', unsafe_allow_html=True)
 
-        st.markdown('''
+        st.markdown(u'''
         <div style="background:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;
                     padding:1.5rem;line-height:1.8;color:#475569;font-size:0.9rem;">
-            <strong style="color:#0F172A;">O que e o HemaSakula?</strong><br><br>
-            O HemaSakula e uma plataforma angolana que te ajuda a encontrar
-            clinicas e hospitais perto de ti. Alem disso, as clinicas parceiras
+            <strong style="color:#0F172A;">O que \u00e9 o HemaSakula?</strong><br><br>
+            O HemaSakula \u00e9 uma plataforma angolana que te ajuda a encontrar
+            cl\u00ednicas e hospitais perto de ti. Al\u00e9m disso, as cl\u00ednicas parceiras
             usam o nosso sistema inteligente para analisar exames de sangue
-            e dar melhores diagnosticos.<br><br>
+            e dar melhores diagn\u00f3sticos.<br><br>
             <strong style="color:#0F172A;">Para ti (paciente):</strong><br>
-            &bull; Encontra clinicas e hospitais perto da tua zona<br>
-            &bull; Recebe alertas de saude para o teu municipio<br>
-            &bull; Sabe quando e altura de desparasitar, vacinar, fazer check-up<br><br>
-            <strong style="color:#0F172A;">Para clinicas e hospitais:</strong><br>
-            &bull; Sistema inteligente de apoio a decisao clinica<br>
-            &bull; Analise de hemogramas com inteligencia artificial<br>
-            &bull; Dados epidemiologicos por municipio e estacao<br><br>
-            <em>Feito com dedicacao para Angola.</em>
+            &#8226; Encontra cl\u00ednicas e hospitais perto da tua zona<br>
+            &#8226; Recebe alertas de sa\u00fade para o teu munic\u00edpio<br>
+            &#8226; Sabe quando \u00e9 altura de desparasitar, vacinar, fazer check-up<br><br>
+            <strong style="color:#0F172A;">Para cl\u00ednicas e hospitais:</strong><br>
+            &#8226; Sistema inteligente de apoio \u00e0 decis\u00e3o cl\u00ednica<br>
+            &#8226; An\u00e1lise de hemogramas com intelig\u00eancia artificial<br>
+            &#8226; Dados epidemiol\u00f3gicos por munic\u00edpio e esta\u00e7\u00e3o<br>
         </div>
         ''', unsafe_allow_html=True)
 
-    # footer
     st.markdown('''
     <div style="text-align:center;padding:1.5rem 0;margin-top:2rem;
                 border-top:1px solid #E2E8F0;color:#94A3B8;font-size:0.78rem;">
-        <strong>HemaSakula</strong> &middot; Angola a Cuidar dos Seus
+        A tua sa&#250;de importa. Estamos aqui por ti.
     </div>
     ''', unsafe_allow_html=True)
 
 
-# =============================================
-# TELA 4 - PAINEL DA EMPRESA (sistema clinico)
-# =============================================
-
 def tela_painel_empresa():
-    """Painel da empresa - sistema de apoio a decisao clinica"""
     st.markdown(css_painel_empresa(), unsafe_allow_html=True)
 
     usuario = st.session_state.get('empresa_usuario', 'Empresa')
@@ -1116,8 +1031,8 @@ def tela_painel_empresa():
     with col_header1:
         st.title("HemaSakula")
         st.markdown(
-            f'<p style="color:#64748B;font-size:1rem;margin-top:-0.5rem;'
-            f'font-style:italic;">{SLOGAN}</p>',
+            '<p style="color:#64748B;font-size:1rem;margin-top:-0.5rem;'
+            'font-style:italic;">Angola a Cuidar dos Seus</p>',
             unsafe_allow_html=True
         )
     with col_header2:
@@ -1130,17 +1045,16 @@ def tela_painel_empresa():
         )
 
     st.markdown(
-        '<div class="aviso-institucional"><p><strong>Atencao:</strong> '
-        'Este sistema serve de apoio a decisao clinica. Nao substitui a '
-        'avaliacao presencial nem o julgamento do profissional de saude.'
-        '</p></div>',
+        '<div class="aviso-institucional"><p><strong>Aten\u00e7\u00e3o:</strong> '
+        'Este sistema serve de apoio \u00e0 decis\u00e3o cl\u00ednica. N\u00e3o substitui a '
+        'avalia\u00e7\u00e3o presencial nem o julgamento do profissional de sa\u00fade.</p></div>',
         unsafe_allow_html=True
     )
 
     modelo, encoders, features = carregar_modelo()
 
     if modelo is None:
-        st.error("Modelo nao encontrado. Executa primeiro: python modelo_ml.py")
+        st.error("Modelo n\u00e3o encontrado. Executa primeiro: python modelo_ml.py")
         return
 
     st.markdown(
@@ -1149,7 +1063,6 @@ def tela_painel_empresa():
         unsafe_allow_html=True
     )
 
-    # sidebar com dados do paciente
     with st.sidebar:
         st.markdown(f'''
         <div style="text-align:center;padding:0.8rem 0 1rem 0;">
@@ -1171,30 +1084,30 @@ def tela_painel_empresa():
 
         st.header("Dados do Paciente")
 
-        st.subheader("Identificacao")
-        faixa_etaria = st.selectbox("Faixa etaria", FAIXAS_ETARIAS, index=5)
-        sexo = st.selectbox("Sexo biologico", SEXOS)
+        st.subheader("Identifica\u00e7\u00e3o")
+        faixa_etaria = st.selectbox("Faixa et\u00e1ria", FAIXAS_ETARIAS, index=5)
+        sexo = st.selectbox("Sexo biol\u00f3gico", SEXOS)
 
         gestante = False
         if sexo == 'Feminino' and ('Adulto' in faixa_etaria or 'Adolescente' in faixa_etaria):
-            gestante = st.checkbox("Gravida")
+            gestante = st.checkbox("Gr\u00e1vida")
 
         peso = st.number_input("Peso (kg)", 1.0, 200.0, 65.0, 0.5)
 
-        st.subheader("Localizacao")
-        municipio = st.selectbox("Municipio", list(MUNICIPIOS_INFO.keys()))
+        st.subheader("Localiza\u00e7\u00e3o")
+        municipio = st.selectbox("Munic\u00edpio", list(MUNICIPIOS_INFO.keys()))
         info_mun = MUNICIPIOS_INFO[municipio]
         provincia = info_mun['provincia']
-        st.markdown(f"**Provincia:** {provincia}")
-        st.markdown(f"**Risco epidemiologico:** {info_mun['risco']}")
+        st.markdown(f"**Prov\u00edncia:** {provincia}")
+        st.markdown(f"**Risco epidemiol\u00f3gico:** {info_mun['risco']}")
 
         st.subheader("Data da colheita")
-        mes = st.selectbox("Mes", MESES, index=datetime.now().month - 1)
+        mes = st.selectbox("M\u00eas", MESES, index=datetime.now().month - 1)
         estacao = ESTACOES_POR_MES[mes]
-        st.markdown(f"**Estacao:** {estacao}")
+        st.markdown(f"**Esta\u00e7\u00e3o:** {estacao}")
 
         st.subheader("Antecedentes")
-        status_genetico = st.selectbox("Hemoglobina (genetica)", STATUS_GENETICO)
+        status_genetico = st.selectbox("Hemoglobina (gen\u00e9tica)", STATUS_GENETICO)
         mordedura = st.checkbox("Mordedura animal recente")
 
         st.markdown("---")
@@ -1205,39 +1118,38 @@ def tela_painel_empresa():
                     del st.session_state[k]
             st.rerun()
 
-    # hemograma
     st.header("Hemograma")
 
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        st.markdown('<p class="serie-vermelha-header">Serie Vermelha</p>', unsafe_allow_html=True)
+        st.markdown('<p class="serie-vermelha-header">S\u00e9rie Vermelha</p>', unsafe_allow_html=True)
         hemoglobina = st.number_input("Hemoglobina (g/dL)", 3.0, 22.0, 12.5, 0.1)
-        hematocrito = st.number_input("Hematocrito (%)", 10.0, 70.0, 38.0, 0.5)
-        hemacias = st.number_input("Eritrocitos (x10^6/uL)", 2.0, 7.0, 4.5, 0.1)
+        hematocrito = st.number_input("Hemat\u00f3crito (%)", 10.0, 70.0, 38.0, 0.5)
+        hemacias = st.number_input("Eritr\u00f3citos (x10^6/uL)", 2.0, 7.0, 4.5, 0.1)
         vcm = st.number_input("VCM (fL)", 50.0, 120.0, 88.0, 1.0)
         hcm = st.number_input("HCM (pg)", 15.0, 40.0, 29.0, 0.5)
         chcm = st.number_input("CHCM (g/dL)", 28.0, 40.0, 33.5, 0.5)
         rdw = st.number_input("RDW (%)", 10.0, 25.0, 13.5, 0.1)
 
     with col2:
-        st.markdown('<p class="serie-branca-header">Serie Branca</p>', unsafe_allow_html=True)
-        leucocitos = st.number_input("Leucocitos (/mm3)", 500, 50000, 7500, 100)
-        neutrofilos = st.number_input("Neutrofilos (%)", 10.0, 90.0, 58.0, 1.0)
-        linfocitos = st.number_input("Linfocitos (%)", 5.0, 70.0, 32.0, 1.0)
-        monocitos = st.number_input("Monocitos (%)", 0.0, 20.0, 6.0, 0.5)
-        eosinofilos = st.number_input("Eosinofilos (%)", 0.0, 25.0, 3.0, 0.5)
-        basofilos = st.number_input("Basofilos (%)", 0.0, 3.0, 0.5, 0.1)
+        st.markdown('<p class="serie-branca-header">S\u00e9rie Branca</p>', unsafe_allow_html=True)
+        leucocitos = st.number_input("Leuc\u00f3citos (/mm3)", 500, 50000, 7500, 100)
+        neutrofilos = st.number_input("Neutr\u00f3filos (%)", 10.0, 90.0, 58.0, 1.0)
+        linfocitos = st.number_input("Linf\u00f3citos (%)", 5.0, 70.0, 32.0, 1.0)
+        monocitos = st.number_input("Mon\u00f3citos (%)", 0.0, 20.0, 6.0, 0.5)
+        eosinofilos = st.number_input("Eosin\u00f3filos (%)", 0.0, 25.0, 3.0, 0.5)
+        basofilos = st.number_input("Bas\u00f3filos (%)", 0.0, 3.0, 0.5, 0.1)
 
         valido, soma = validar_leucograma(neutrofilos, linfocitos, monocitos, eosinofilos, basofilos)
         if not valido:
-            st.warning(f"O diferencial soma {soma:.1f}% - o esperado e proximo de 100%.")
+            st.warning(f"O diferencial soma {soma:.1f}% - o esperado \u00e9 pr\u00f3ximo de 100%.")
 
     with col3:
         st.markdown('<p class="serie-plaquetas-header">Plaquetas e Outros</p>', unsafe_allow_html=True)
         plaquetas = st.number_input("Plaquetas (/mm3)", 5000, 1000000, 250000, 5000)
         vpm = st.number_input("VPM (fL)", 5.0, 15.0, 9.5, 0.5)
-        reticulocitos = st.number_input("Reticulocitos (%)", 0.2, 15.0, 1.2, 0.1)
+        reticulocitos = st.number_input("Reticul\u00f3citos (%)", 0.2, 15.0, 1.2, 0.1)
 
     st.markdown("---")
 
@@ -1269,7 +1181,7 @@ def tela_painel_empresa():
                 return
 
             if not resultados:
-                st.error("Nao consegui gerar resultados. Confere os dados.")
+                st.error("N\u00e3o consegui gerar resultados. Confere os dados.")
                 return
 
             diag_principal = resultados[0][0]
@@ -1300,7 +1212,7 @@ def tela_painel_empresa():
                     unsafe_allow_html=True
                 )
 
-            st.subheader("Hipoteses diagnosticas")
+            st.subheader("Hip\u00f3teses diagn\u00f3sticas")
 
             for i, (diag, prob) in enumerate(resultados[:3]):
                 if i == 0:
@@ -1336,17 +1248,17 @@ def tela_painel_empresa():
                     st.info(f"**Conduta:** {cond['leve']}")
 
                 st.markdown(
-                    f'<div class="card"><strong>Exame pra confirmar:</strong> '
+                    f'<div class="card"><strong>Exame para confirmar:</strong> '
                     f'{cond["exame"]}</div>',
                     unsafe_allow_html=True
                 )
 
                 if cond['alertas']:
-                    with st.expander("Sinais de alarme - referenciar ja"):
+                    with st.expander("Sinais de alarme - referenciar j\u00e1"):
                         for a in cond['alertas']:
                             st.markdown(f"- {a}")
 
-            st.subheader("Interpretacao do hemograma")
+            st.subheader("Interpreta\u00e7\u00e3o do hemograma")
 
             col_l1, col_l2 = st.columns(2)
 
@@ -1356,60 +1268,49 @@ def tela_painel_empresa():
                 _, plt_l = classificar_valor(plaquetas, 140000, 400000)
                 st.metric("Plaquetas", f"{formatar_numero(plaquetas)}/mm3", plt_l)
                 _, leu_l = classificar_valor(leucocitos, 4000, 10000)
-                st.metric("Leucocitos", f"{formatar_numero(leucocitos)}/mm3", leu_l)
+                st.metric("Leuc\u00f3citos", f"{formatar_numero(leucocitos)}/mm3", leu_l)
 
             with col_l2:
                 _, vcm_l = classificar_valor(vcm, 80, 98)
                 st.metric("VCM", f"{vcm} fL", vcm_l)
                 _, eos_l = classificar_valor(eosinofilos, 1, 5)
-                st.metric("Eosinofilos", f"{eosinofilos}%", eos_l)
+                st.metric("Eosin\u00f3filos", f"{eosinofilos}%", eos_l)
                 _, ret_l = classificar_valor(reticulocitos, 0.5, 2.5)
-                st.metric("Reticulocitos", f"{reticulocitos}%", ret_l)
+                st.metric("Reticul\u00f3citos", f"{reticulocitos}%", ret_l)
 
-            if status_genetico in ['Traco falciforme (AS)', 'Drepanocitose (SS)']:
+            if status_genetico in ['Tra\u00e7o falciforme (AS)', 'Drepanocitose (SS)']:
                 st.warning(
                     f"**Hemoglobinopatia: {status_genetico}.** "
                     f"Seguimento no IHL ou centro de drepanocitose. "
-                    f"Acido folico 5 mg/dia, beber muita agua, "
+                    f"\u00c1cido f\u00f3lico 5 mg/dia, beber muita \u00e1gua, "
                     f"evitar frio e tudo que possa provocar crise."
                 )
 
             if mordedura:
                 st.error(
-                    "**Mordedura animal - risco rabico!** "
-                    "Lavar a ferida com agua e sabao durante 15 minutos. "
-                    "Iniciar profilaxia anti-rabica sem esperar resultados. "
+                    "**Mordedura animal - risco r\u00e1bico!** "
+                    "Lavar a ferida com \u00e1gua e sab\u00e3o durante 15 minutos. "
+                    "Iniciar profilaxia anti-r\u00e1bica sem esperar resultados. "
                     "Cada hora conta."
                 )
 
     st.markdown(
-        f'<div class="footer"><strong>HemaSakula</strong><br>{SLOGAN}<br>'
-        f'<span style="font-size:0.75rem;">Feito com dedicacao pra Angola | '
-        f'v3.0</span></div>',
+        '<div class="footer">A tua sa\u00fade importa. Estamos aqui por ti.</div>',
         unsafe_allow_html=True
     )
 
 
-# =============================================
-# MAIN - NAVEGACAO POR ECRAS
-# =============================================
-
 def main():
-    # determinar ecra actual
     ecra = st.session_state.get('ecra', 'inicio')
 
     if ecra == 'inicio':
         tela_boas_vindas()
-
     elif ecra == 'login_empresa':
         tela_login_empresa()
-
     elif ecra == 'cliente':
         tela_painel_cliente()
-
     elif ecra == 'empresa':
         tela_painel_empresa()
-
     else:
         tela_boas_vindas()
 
