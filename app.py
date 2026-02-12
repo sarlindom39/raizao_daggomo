@@ -1,18 +1,36 @@
+# app.py
+# HemaSakula - Angola a Cuidar dos Seus
+# v3.0 - Tela principal acolhedora focada no cliente
+# Login de empresa discreto
+
 import streamlit as st
 import pandas as pd
 import numpy as np
 import pickle
 import time
+import json
+import os
 from datetime import datetime
 
 st.set_page_config(
     page_title="HemaSakula",
-    page_icon="",
+    page_icon="ðŸ©¸",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
 SLOGAN = "Angola a Cuidar dos Seus"
+
+# ficheiros de dados locais
+FICHEIRO_CLIENTES = 'dados_clientes.json'
+FICHEIRO_EMPRESAS = 'dados_empresas.json'
+
+# municipios disponiveis
+MUNICIPIOS_LISTA = [
+    'Ingombota', 'Talatona', 'Belas', 'Viana', 'Cacuaco',
+    'Cazenga', 'Kilamba Kiaxi', 'Rangel', 'Maianga', 'Samba',
+    'Catete', 'Icolo e Bengo'
+]
 
 MUNICIPIOS_INFO = {
     'Ingombota': {'provincia': 'Luanda', 'risco': 'Baixo', 'hospital': 'Hospital Josina Machel'},
@@ -249,6 +267,56 @@ CONDUTAS = {
 }
 
 
+# =============================================
+# FUNCOES DE DADOS (clientes e empresas)
+# =============================================
+
+def carregar_clientes():
+    if os.path.exists(FICHEIRO_CLIENTES):
+        with open(FICHEIRO_CLIENTES, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    return {}
+
+
+def guardar_clientes(dados):
+    with open(FICHEIRO_CLIENTES, 'w', encoding='utf-8') as f:
+        json.dump(dados, f, ensure_ascii=False, indent=2)
+
+
+def registar_cliente(nome, telefone, municipio, email=''):
+    clientes = carregar_clientes()
+    
+    tel_limpo = telefone.replace(' ', '').replace('-', '')
+    
+    if tel_limpo in clientes:
+        # cliente ja existe, actualizar e deixar entrar
+        clientes[tel_limpo]['nome'] = nome
+        clientes[tel_limpo]['municipio'] = municipio
+        if email:
+            clientes[tel_limpo]['email'] = email
+        guardar_clientes(clientes)
+        return True, clientes[tel_limpo], "Bem-vindo de volta!"
+    
+    # novo cliente
+    cliente = {
+        'nome': nome,
+        'telefone': tel_limpo,
+        'municipio': municipio,
+        'email': email,
+        'data_registo': datetime.now().strftime('%Y-%m-%d %H:%M'),
+        'historico': [],
+        'plano': None
+    }
+    
+    clientes[tel_limpo] = cliente
+    guardar_clientes(clientes)
+    return True, cliente, f"Bem-vindo ao HemaSakula, {nome.split()[0]}!"
+
+
+# =============================================
+# FUNCOES DO MODELO ML
+# =============================================
+
 @st.cache_resource
 def carregar_modelo():
     try:
@@ -353,86 +421,123 @@ def processar_analise(modelo, encoders, features, dados_paciente):
     return gravidade, resultados, erro
 
 
-# =======================================
-# ECRA DE LOGIN
-# =======================================
+# =============================================
+# CSS
+# =============================================
 
-def verificar_acesso():
-    def processar_login():
-        usuario = st.session_state.get("input_usuario", "").strip().lower()
-        senha = st.session_state.get("input_senha", "")
-        try:
-            usuarios_validos = st.secrets["usuarios"]
-            if usuario in usuarios_validos and usuarios_validos[usuario] == senha:
-                st.session_state["autenticado"] = True
-                st.session_state["usuario_atual"] = usuario
-            else:
-                st.session_state["erro_login"] = True
-        except Exception:
-            st.session_state["erro_login"] = True
+def css_tela_principal():
+    """CSS da tela de boas-vindas - branca, limpa, acolhedora"""
+    return """<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+* { font-family: 'Inter', -apple-system, sans-serif; }
+.stApp { background: #FFFFFF !important; }
+[data-testid="stSidebar"], header[data-testid="stHeader"],
+#MainMenu, footer, .stDeployButton { display: none !important; }
+.main .block-container {
+    max-width: 520px; margin: 0 auto;
+    padding-top: 0 !important; padding-bottom: 2rem !important;
+}
 
-    if st.session_state.get("autenticado", False):
-        return True
+/* inputs */
+.stTextInput > label, .stSelectbox > label {
+    color: #64748B !important; font-size: 0.82rem !important;
+    font-weight: 600 !important; letter-spacing: 0.02em !important;
+    text-transform: none !important;
+}
+.stTextInput > div > div > input,
+.stSelectbox > div > div {
+    background: #F8FAFC !important;
+    border: 1.5px solid #E2E8F0 !important;
+    border-radius: 12px !important;
+    color: #0F172A !important;
+    padding: 0.85rem 1rem !important;
+    font-size: 0.95rem !important;
+    transition: all 0.2s ease !important;
+}
+.stTextInput > div > div > input:focus {
+    border-color: #0F172A !important;
+    box-shadow: 0 0 0 3px rgba(15,23,42,0.06) !important;
+    background: #FFFFFF !important;
+}
+.stTextInput > div > div > input::placeholder {
+    color: #94A3B8 !important;
+}
 
-    hora_actual = datetime.now().hour
-    if hora_actual < 12:
-        saudacao = "Bom dia"
-    elif hora_actual < 18:
-        saudacao = "Boa tarde"
-    else:
-        saudacao = "Boa noite"
-
-    st.markdown("""<style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-* { font-family: 'Inter', sans-serif; }
-.stApp { background: #0B0F19 !important; }
-[data-testid="stSidebar"], header[data-testid="stHeader"], #MainMenu, footer, .stDeployButton { display: none !important; }
-.main .block-container { max-width: 420px; margin: 0 auto; padding-top: 0 !important; padding-bottom: 0 !important; }
-.stTextInput > label { color: rgba(255,255,255,0.45) !important; font-size: 0.78rem !important; font-weight: 600 !important; letter-spacing: 0.05em !important; text-transform: uppercase !important; }
-.stTextInput > div > div > input { background: rgba(255,255,255,0.06) !important; border: 1px solid rgba(255,255,255,0.12) !important; border-radius: 10px !important; color: #FFFFFF !important; padding: 0.8rem 1rem !important; font-size: 0.95rem !important; transition: all 0.25s ease !important; }
-.stTextInput > div > div > input:focus { border-color: rgba(255,255,255,0.35) !important; box-shadow: 0 0 0 2px rgba(255,255,255,0.08) !important; background: rgba(255,255,255,0.09) !important; }
-.stTextInput > div > div > input::placeholder { color: rgba(255,255,255,0.2) !important; }
-.stButton > button { background: #FFFFFF !important; color: #0B0F19 !important; border: none !important; border-radius: 10px !important; font-weight: 600 !important; font-size: 0.95rem !important; padding: 0.8rem 2rem !important; width: 100% !important; transition: all 0.2s ease !important; margin-top: 0.5rem !important; }
-.stButton > button:hover { background: #F0F0F0 !important; transform: translateY(-1px) !important; box-shadow: 0 4px 20px rgba(255,255,255,0.1) !important; }
+/* botao principal */
+.stButton > button {
+    background: #0F172A !important; color: #FFFFFF !important;
+    border: none !important; border-radius: 12px !important;
+    font-weight: 600 !important; font-size: 1rem !important;
+    padding: 0.9rem 2rem !important; width: 100% !important;
+    transition: all 0.2s ease !important; margin-top: 0.5rem !important;
+    letter-spacing: 0.01em !important;
+}
+.stButton > button:hover {
+    background: #1E293B !important; transform: translateY(-1px) !important;
+    box-shadow: 0 6px 20px rgba(15,23,42,0.12) !important;
+}
 .stButton > button:active { transform: translateY(0) !important; }
-.stAlert { background: rgba(220,50,50,0.12) !important; border: 1px solid rgba(220,50,50,0.25) !important; border-radius: 10px !important; }
-</style>""", unsafe_allow_html=True)
 
-    st.markdown("<div style='height: 8vh;'></div>", unsafe_allow_html=True)
-
-    st.markdown('<div style="text-align:center;margin-bottom:3rem;"><div style="width:72px;height:72px;background:#FFFFFF;border-radius:18px;display:inline-flex;align-items:center;justify-content:center;font-size:1.6rem;font-weight:800;color:#0B0F19;margin-bottom:1.5rem;">HS</div><div style="font-size:2.2rem;font-weight:800;color:#FFFFFF;letter-spacing:-0.03em;line-height:1.1;">HemaSakula</div><div style="font-size:0.8rem;color:rgba(255,255,255,0.3);letter-spacing:0.2em;text-transform:uppercase;margin-top:0.6rem;font-weight:400;">Angola a Cuidar dos Seus</div></div>', unsafe_allow_html=True)
-
-    st.markdown('<div style="height:1px;background:rgba(255,255,255,0.08);margin:0 0 2rem 0;"></div>', unsafe_allow_html=True)
-
-    st.markdown(f'<div style="margin-bottom:1.8rem;"><div style="font-size:1.3rem;font-weight:600;color:#FFFFFF;margin-bottom:0.4rem;">{saudacao}</div><div style="font-size:0.9rem;color:rgba(255,255,255,0.35);line-height:1.5;">Entra com as tuas credenciais pra acessar o sistema.</div></div>', unsafe_allow_html=True)
-
-    st.text_input("Utilizador", key="input_usuario", placeholder="O teu nome de utilizador")
-    st.markdown("<div style='height:0.3rem;'></div>", unsafe_allow_html=True)
-    st.text_input("Palavra-passe", type="password", key="input_senha", placeholder="A tua palavra-passe")
-    st.markdown("<div style='height:0.5rem;'></div>", unsafe_allow_html=True)
-
-    if st.button("Entrar", use_container_width=True):
-        processar_login()
-        if st.session_state.get("autenticado"):
-            st.rerun()
-
-    if st.session_state.get("erro_login", False):
-        st.error("Epa, essas credenciais nao batem certo. Tenta de novo.")
-        st.session_state["erro_login"] = False
-
-    st.markdown('<div style="text-align:center;margin-top:3rem;padding-top:2rem;border-top:1px solid rgba(255,255,255,0.06);"><div style="color:rgba(255,255,255,0.2);font-size:0.75rem;letter-spacing:0.02em;">Acesso restrito a profissionais autorizados</div><div style="color:rgba(255,255,255,0.12);font-size:0.7rem;margin-top:0.6rem;">HemaSakula - Angola 2025</div></div>', unsafe_allow_html=True)
-
-    return False
+/* alertas */
+.stAlert { border-radius: 12px !important; }
+</style>"""
 
 
-# =======================================
-# CSS GLOBAL (so depois do login)
-# =======================================
+def css_painel_cliente():
+    """CSS do painel do cliente depois de entrar"""
+    return """<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+* { font-family: 'Inter', -apple-system, sans-serif; }
+.stApp { background-color: #F8FAFC !important; color: #0F172A; }
+[data-testid="stSidebar"] { display: none !important; }
+header[data-testid="stHeader"] { display: none !important; }
+.main .block-container {
+    max-width: 800px; margin: 0 auto;
+    padding: 1.5rem 2rem;
+}
 
-def aplicar_css_global():
-    st.markdown("""<style>
+h1 { color: #0F172A !important; font-weight: 700 !important; font-size: 1.6rem !important; }
+h2 {
+    color: #1E293B !important; font-weight: 600 !important;
+    font-size: 1.15rem !important; margin-top: 1.5rem !important;
+    margin-bottom: 0.8rem !important; padding-bottom: 0.5rem !important;
+    border-bottom: 1px solid #E2E8F0 !important;
+}
+
+/* tabs */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 0; background: #F1F5F9; border-radius: 12px; padding: 4px;
+}
+.stTabs [data-baseweb="tab"] {
+    background: transparent !important; color: #64748B !important;
+    border: none !important; border-radius: 10px !important;
+    font-weight: 500 !important; font-size: 0.85rem !important;
+    padding: 0.6rem 1rem !important;
+}
+.stTabs [aria-selected="true"] {
+    background: #FFFFFF !important; color: #0F172A !important;
+    font-weight: 600 !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08) !important;
+}
+
+/* botoes */
+.stButton > button {
+    background: #0F172A !important; color: #FFFFFF !important;
+    border: none !important; border-radius: 10px !important;
+    font-weight: 600 !important; font-size: 0.88rem !important;
+    transition: all 0.2s ease !important;
+}
+.stButton > button:hover {
+    background: #1E293B !important;
+}
+</style>"""
+
+
+def css_painel_empresa():
+    """CSS do painel da empresa (sistema clinico)"""
+    return """<style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-* { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+* { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
 .stApp { background-color: #F8FAFC !important; color: #0F172A; }
 .main .block-container { padding: 2.5rem 4rem; max-width: 1300px; margin: 0 auto; }
 h1 { color: #0F172A !important; font-weight: 700 !important; font-size: 2rem !important; letter-spacing: -0.025em !important; margin-bottom: 0.5rem !important; }
@@ -470,33 +575,567 @@ label, .stSelectbox label, .stNumberInput label, .stCheckbox label { color: #475
 .serie-branca-header { color: #475569 !important; font-weight: 700 !important; font-size: 1rem !important; border-bottom: 2px solid #475569; padding-bottom: 0.5rem; margin-bottom: 1.5rem !important; }
 .serie-plaquetas-header { color: #4338CA !important; font-weight: 700 !important; font-size: 1rem !important; border-bottom: 2px solid #4338CA; padding-bottom: 0.5rem; margin-bottom: 1.5rem !important; }
 hr { border: none; height: 1px; background-color: #E2E8F0; margin: 2rem 0; }
-.text-muted { color: #64748B; font-size: 0.875rem; }
-.text-small { font-size: 0.8125rem; }
 .footer { text-align: center; padding: 2rem 0; margin-top: 3rem; border-top: 1px solid #E2E8F0; color: #94A3B8; font-size: 0.85rem; }
-</style>""", unsafe_allow_html=True)
+</style>"""
 
 
-# =======================================
-# APP PRINCIPAL
-# =======================================
+# =============================================
+# TELA 1 - BOAS-VINDAS (tela principal)
+# =============================================
 
-def main():
-    if not verificar_acesso():
-        st.stop()
+def tela_boas_vindas():
+    """
+    Tela principal - acolhedora, focada no cliente
+    Pergunta simples: nome, municipio, telefone, email (opcional)
+    Link discreto para empresas
+    """
+    st.markdown(css_tela_principal(), unsafe_allow_html=True)
 
-    aplicar_css_global()
+    # saudacao por hora do dia
+    hora = datetime.now().hour
+    if hora < 12:
+        saudacao = "Bom dia"
+        emoji = "â˜€ï¸"
+    elif hora < 18:
+        saudacao = "Boa tarde"
+        emoji = "ðŸŒ¤ï¸"
+    else:
+        saudacao = "Boa noite"
+        emoji = "ðŸŒ™"
+
+    st.markdown("<div style='height: 4vh;'></div>", unsafe_allow_html=True)
+
+    # logo e marca
+    st.markdown('''
+    <div style="text-align:center;margin-bottom:2rem;">
+        <div style="width:80px;height:80px;background:#0F172A;border-radius:20px;
+                    display:inline-flex;align-items:center;justify-content:center;
+                    font-size:1.7rem;font-weight:800;color:#FFFFFF;margin-bottom:1.2rem;
+                    box-shadow:0 8px 24px rgba(15,23,42,0.12);">
+            HS
+        </div>
+        <div style="font-size:2.2rem;font-weight:800;color:#0F172A;letter-spacing:-0.03em;
+                    line-height:1.1;">
+            HemaSakula
+        </div>
+        <div style="font-size:0.82rem;color:#94A3B8;letter-spacing:0.12em;
+                    text-transform:uppercase;margin-top:0.5rem;font-weight:500;">
+            Angola a Cuidar dos Seus
+        </div>
+    </div>
+    ''', unsafe_allow_html=True)
+
+    # separador suave
+    st.markdown('''
+    <div style="height:1px;background:linear-gradient(90deg,transparent,#E2E8F0,transparent);
+                margin:0.5rem 0 2rem 0;"></div>
+    ''', unsafe_allow_html=True)
+
+    # saudacao calorosa
+    st.markdown(f'''
+    <div style="text-align:center;margin-bottom:2rem;">
+        <div style="font-size:1.5rem;font-weight:600;color:#0F172A;margin-bottom:0.5rem;">
+            {saudacao}! {emoji}
+        </div>
+        <div style="font-size:1rem;color:#64748B;line-height:1.6;max-width:380px;margin:0 auto;">
+            Encontra clinicas e hospitais perto de ti.
+            Cuida da tua saude com quem te entende.
+        </div>
+    </div>
+    ''', unsafe_allow_html=True)
+
+    # formulario simples
+    st.markdown('''
+    <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:16px;
+                padding:1.8rem;margin-bottom:1.5rem;">
+        <div style="font-size:0.95rem;font-weight:600;color:#0F172A;margin-bottom:1.2rem;">
+            Diz-nos um pouco sobre ti
+        </div>
+    </div>
+    ''', unsafe_allow_html=True)
+
+    # usar container para os campos ficarem dentro do "card" visual
+    nome = st.text_input(
+        "Como queres que te chamemos?",
+        placeholder="Ex: Maria, Joao, Kika...",
+        key="nome_cliente"
+    )
+
+    municipio = st.selectbox(
+        "Onde vives?",
+        MUNICIPIOS_LISTA,
+        key="municipio_cliente"
+    )
+
+    telefone = st.text_input(
+        "O teu numero de telefone",
+        placeholder="Ex: 923 456 789",
+        key="telefone_cliente"
+    )
+
+    email = st.text_input(
+        "Email (se tiveres, nao e obrigatorio)",
+        placeholder="exemplo@email.com",
+        key="email_cliente"
+    )
+
+    # botao principal
+    if st.button("Comecar", key="btn_comecar", use_container_width=True):
+        # validacoes simples
+        if not nome or not nome.strip():
+            st.error("Precisamos do teu nome para te chamar.")
+        elif not telefone or len(telefone.replace(' ', '').replace('-', '')) < 9:
+            st.error("Mete o teu numero de telefone. Precisamos dele para te contactar.")
+        else:
+            # registar e entrar
+            sucesso, dados, msg = registar_cliente(
+                nome.strip(), telefone.strip(), municipio, email.strip()
+            )
+            if sucesso:
+                st.session_state['ecra'] = 'cliente'
+                st.session_state['cliente'] = dados
+                st.success(msg)
+                time.sleep(0.5)
+                st.rerun()
+            else:
+                st.error("Algo correu mal. Tenta de novo.")
+
+    # espaco antes do link de empresa
+    st.markdown("<div style='height:2rem;'></div>", unsafe_allow_html=True)
+
+    # separador
+    st.markdown('''
+    <div style="height:1px;background:linear-gradient(90deg,transparent,#E2E8F0,transparent);
+                margin:0 0 1.5rem 0;"></div>
+    ''', unsafe_allow_html=True)
+
+    # link discreto para empresas
+    st.markdown('''
+    <div style="text-align:center;">
+        <div style="color:#CBD5E1;font-size:0.78rem;margin-bottom:0.5rem;">
+            Es uma clinica ou hospital?
+        </div>
+    </div>
+    ''', unsafe_allow_html=True)
+
+    col_emp1, col_emp2, col_emp3 = st.columns([1, 2, 1])
+    with col_emp2:
+        if st.button("Entrar como Empresa", key="btn_empresa", use_container_width=True):
+            st.session_state['ecra'] = 'login_empresa'
+            st.rerun()
+
+    # rodape
+    st.markdown('''
+    <div style="text-align:center;margin-top:2.5rem;color:#CBD5E1;font-size:0.72rem;">
+        HemaSakula &middot; Angola 2025
+    </div>
+    ''', unsafe_allow_html=True)
+
+
+# =============================================
+# TELA 2 - LOGIN DA EMPRESA (discreto)
+# =============================================
+
+def tela_login_empresa():
+    """Login da empresa - simples, discreto"""
+    st.markdown(css_tela_principal(), unsafe_allow_html=True)
+
+    st.markdown("<div style='height: 6vh;'></div>", unsafe_allow_html=True)
+
+    # logo pequeno
+    st.markdown('''
+    <div style="text-align:center;margin-bottom:2rem;">
+        <div style="width:56px;height:56px;background:#0F172A;border-radius:14px;
+                    display:inline-flex;align-items:center;justify-content:center;
+                    font-size:1.2rem;font-weight:800;color:#FFFFFF;margin-bottom:1rem;">
+            HS
+        </div>
+        <div style="font-size:1.3rem;font-weight:700;color:#0F172A;">
+            Acesso Profissional
+        </div>
+        <div style="font-size:0.82rem;color:#94A3B8;margin-top:0.3rem;">
+            Para clinicas e hospitais parceiros
+        </div>
+    </div>
+    ''', unsafe_allow_html=True)
+
+    st.markdown('''
+    <div style="height:1px;background:linear-gradient(90deg,transparent,#E2E8F0,transparent);
+                margin:0 0 2rem 0;"></div>
+    ''', unsafe_allow_html=True)
+
+    usuario = st.text_input(
+        "Utilizador",
+        placeholder="O teu utilizador",
+        key="emp_usuario"
+    )
+
+    senha = st.text_input(
+        "Palavra-passe",
+        type="password",
+        placeholder="A tua palavra-passe",
+        key="emp_senha"
+    )
+
+    if st.button("Entrar", key="btn_entrar_empresa", use_container_width=True):
+        if not usuario or not senha:
+            st.error("Preenche os dois campos.")
+        else:
+            # tentar autenticar via secrets
+            autenticado = False
+            try:
+                usuarios_validos = st.secrets["usuarios"]
+                if usuario.strip().lower() in usuarios_validos:
+                    if usuarios_validos[usuario.strip().lower()] == senha:
+                        autenticado = True
+            except Exception:
+                pass
+
+            if autenticado:
+                st.session_state['ecra'] = 'empresa'
+                st.session_state['empresa_usuario'] = usuario.strip()
+                st.success("Bem-vindo!")
+                time.sleep(0.3)
+                st.rerun()
+            else:
+                st.error("Credenciais incorrectas. Verifica e tenta de novo.")
+
+    st.markdown("<div style='height:1.5rem;'></div>", unsafe_allow_html=True)
+
+    # voltar para tela principal
+    col_v1, col_v2, col_v3 = st.columns([1, 2, 1])
+    with col_v2:
+        if st.button("Voltar", key="btn_voltar_login", use_container_width=True):
+            st.session_state['ecra'] = 'inicio'
+            st.rerun()
+
+    st.markdown('''
+    <div style="text-align:center;margin-top:2rem;color:#CBD5E1;font-size:0.72rem;">
+        Acesso restrito a profissionais autorizados
+    </div>
+    ''', unsafe_allow_html=True)
+
+
+# =============================================
+# TELA 3 - PAINEL DO CLIENTE
+# =============================================
+
+def tela_painel_cliente():
+    """Painel do cliente - depois de se identificar"""
+    st.markdown(css_painel_cliente(), unsafe_allow_html=True)
+
+    cliente = st.session_state.get('cliente', {})
+    nome = cliente.get('nome', 'Amigo')
+    municipio = cliente.get('municipio', 'Luanda')
+    primeiro_nome = nome.split()[0] if nome else 'Amigo'
+
+    hora = datetime.now().hour
+    if hora < 12:
+        saudacao = "Bom dia"
+    elif hora < 18:
+        saudacao = "Boa tarde"
+    else:
+        saudacao = "Boa noite"
+
+    # header
+    col_h1, col_h2 = st.columns([3, 1])
+    with col_h1:
+        st.markdown(f'''
+        <div style="margin-bottom:0.5rem;">
+            <span style="font-size:1.4rem;font-weight:700;color:#0F172A;">
+                {saudacao}, {primeiro_nome}!
+            </span>
+        </div>
+        <div style="color:#64748B;font-size:0.88rem;">
+            O que precisas hoje?
+        </div>
+        ''', unsafe_allow_html=True)
+    with col_h2:
+        if st.button("Sair", key="btn_sair_cliente"):
+            for k in ['ecra', 'cliente']:
+                if k in st.session_state:
+                    del st.session_state[k]
+            st.rerun()
+
+    st.markdown("<div style='height:0.5rem;'></div>", unsafe_allow_html=True)
+
+    # tabs
+    tab_clinicas, tab_alertas, tab_sobre = st.tabs([
+        "Clinicas perto de mim", "Alertas de saude", "Sobre"
+    ])
+
+    # === TAB CLINICAS ===
+    with tab_clinicas:
+        st.markdown(f'''
+        <div style="color:#64748B;font-size:0.88rem;margin-bottom:1rem;">
+            Clinicas e hospitais perto de <strong>{municipio}</strong>
+        </div>
+        ''', unsafe_allow_html=True)
+
+        # mostrar hospital de referencia do municipio
+        info_mun = MUNICIPIOS_INFO.get(municipio, {})
+        hospital_ref = info_mun.get('hospital', 'Centro de Saude')
+
+        st.markdown(f'''
+        <div style="background:#FFFFFF;border:1px solid #E2E8F0;border-left:4px solid #0F172A;
+                    border-radius:12px;padding:1.2rem;margin-bottom:1rem;
+                    box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+            <div style="color:#94A3B8;font-size:0.72rem;text-transform:uppercase;
+                        letter-spacing:0.05em;margin-bottom:0.4rem;">
+                Hospital de referencia
+            </div>
+            <div style="font-weight:600;color:#0F172A;font-size:1.05rem;">
+                {hospital_ref}
+            </div>
+            <div style="color:#64748B;font-size:0.82rem;margin-top:0.3rem;">
+                {municipio} &middot; {info_mun.get('provincia', 'Luanda')}
+            </div>
+        </div>
+        ''', unsafe_allow_html=True)
+
+        # lista de parceiros (simplificada)
+        parceiros_exemplo = [
+            {
+                'nome': 'Hospital Josina Machel',
+                'tipo': 'Hospital Central',
+                'local': 'Ingombota',
+                'horario': '24 horas',
+                'cor': '#1E40AF'
+            },
+            {
+                'nome': 'Hospital Americo Boavida',
+                'tipo': 'Hospital Central',
+                'local': 'Maianga',
+                'horario': '24 horas',
+                'cor': '#047857'
+            },
+            {
+                'nome': 'Hospital Pediatrico David Bernardino',
+                'tipo': 'Hospital Pediatrico',
+                'local': 'Maianga',
+                'horario': '24 horas',
+                'cor': '#DC2626'
+            },
+            {
+                'nome': 'Clinica Sagrada Esperanca',
+                'tipo': 'Clinica Privada',
+                'local': 'Talatona',
+                'horario': '24 horas',
+                'cor': '#0369A1'
+            },
+            {
+                'nome': 'Clinica Multiperfil',
+                'tipo': 'Clinica Privada',
+                'local': 'Talatona',
+                'horario': '07h-20h',
+                'cor': '#1D4ED8'
+            },
+            {
+                'nome': 'Hospital Geral de Viana',
+                'tipo': 'Hospital Geral',
+                'local': 'Viana',
+                'horario': '24 horas',
+                'cor': '#7C3AED'
+            }
+        ]
+
+        for p in parceiros_exemplo:
+            badge_tipo = 'Publico' if 'Hospital' in p['tipo'] and 'Clinica' not in p['tipo'] else 'Privado'
+            badge_cor = '#DBEAFE;color:#1E40AF' if badge_tipo == 'Publico' else '#FEF3C7;color:#92400E'
+
+            st.markdown(f'''
+            <div style="background:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;
+                        padding:1rem 1.2rem;margin-bottom:0.6rem;
+                        box-shadow:0 1px 2px rgba(0,0,0,0.03);">
+                <div style="display:flex;align-items:center;gap:0.7rem;">
+                    <div style="width:36px;height:36px;background:{p['cor']};
+                                border-radius:8px;display:flex;align-items:center;
+                                justify-content:center;color:white;font-weight:700;
+                                font-size:0.7rem;flex-shrink:0;">
+                        {p['nome'][:2].upper()}
+                    </div>
+                    <div style="flex:1;">
+                        <div style="font-weight:600;color:#0F172A;font-size:0.92rem;">
+                            {p['nome']}
+                        </div>
+                        <div style="color:#64748B;font-size:0.78rem;margin-top:0.15rem;">
+                            {p['local']} &middot; {p['horario']}
+                        </div>
+                    </div>
+                    <div>
+                        <span style="background:{badge_cor};padding:0.2rem 0.5rem;
+                                     border-radius:5px;font-size:0.68rem;font-weight:600;">
+                            {badge_tipo}
+                        </span>
+                    </div>
+                </div>
+            </div>
+            ''', unsafe_allow_html=True)
+
+    # === TAB ALERTAS ===
+    with tab_alertas:
+        mes_actual = datetime.now().month
+        meses_nome = [
+            '', 'Janeiro', 'Fevereiro', 'Marco', 'Abril', 'Maio', 'Junho',
+            'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+        ]
+        mes_nome = meses_nome[mes_actual]
+
+        risco_mun = info_mun.get('risco', 'Medio')
+        cor_risco = {
+            'Baixo': '#059669', 'Medio': '#D97706',
+            'Alto': '#DC2626', 'Muito Alto': '#7F1D1D'
+        }
+
+        st.markdown(f'''
+        <div style="background:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;
+                    padding:1.2rem;margin-bottom:1rem;box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+                <div>
+                    <div style="color:#94A3B8;font-size:0.72rem;text-transform:uppercase;
+                                letter-spacing:0.05em;">Risco na tua zona</div>
+                    <div style="font-weight:600;color:#0F172A;font-size:1rem;margin-top:0.3rem;">
+                        {municipio}
+                    </div>
+                </div>
+                <div style="background:{cor_risco.get(risco_mun, '#64748B')};color:white;
+                            padding:0.3rem 0.8rem;border-radius:6px;font-size:0.78rem;
+                            font-weight:600;">
+                    {risco_mun}
+                </div>
+            </div>
+        </div>
+        ''', unsafe_allow_html=True)
+
+        # alertas sazonais
+        alertas_mes = {
+            1: "Epoca de chuvas. Cuidado com a colera e a malaria. Bebe sempre agua tratada.",
+            2: "Chuvas fortes. Evita agua parada perto de casa. Dorme com rede mosquiteira.",
+            3: "Pico de malaria. Se tiveres febre, vai ao centro de saude mais proximo.",
+            4: "Ainda ha muitos mosquitos. Usa repelente e rede mosquiteira.",
+            5: "As chuvas estao a acabar. Boa altura para desparasitar.",
+            6: "Cacimbo. Agasalha-te bem. Quem tem drepanocitose: cuidado com o frio.",
+            7: "Mes mais frio. Protege as criancas e os idosos.",
+            8: "Se tens tosse ha mais de 2 semanas, faz exame no centro de saude.",
+            9: "Boa altura para um check-up e desparasitacao.",
+            10: "As chuvas voltam. Verifica a rede mosquiteira e trata a agua.",
+            11: "Chuvas. Lembra-te da desparasitacao.",
+            12: "Prepara-te para a epoca chuvosa."
+        }
+
+        alerta_txt = alertas_mes.get(mes_actual, "Cuida da tua saude!")
+
+        st.markdown(f'''
+        <div style="background:#FFFBEB;border:1px solid #FEF3C7;border-left:4px solid #F59E0B;
+                    border-radius:10px;padding:1.2rem;margin-bottom:1rem;">
+            <div style="font-weight:600;color:#0F172A;margin-bottom:0.4rem;">
+                Alerta para {mes_nome}
+            </div>
+            <div style="color:#475569;font-size:0.88rem;line-height:1.6;">
+                {alerta_txt}
+            </div>
+        </div>
+        ''', unsafe_allow_html=True)
+
+        # dicas gerais
+        dicas = [
+            ("Rede mosquiteira", "Dorme sempre debaixo de uma rede mosquiteira, mesmo no cacimbo."),
+            ("Agua tratada", "Ferve ou trata a agua antes de beber. Protege contra colera e tifoide."),
+            ("Desparasitacao", "Toma Albendazol de 6 em 6 meses. Para adultos e criancas acima de 2 anos."),
+            ("Vacinas", "Verifica se as vacinas das criancas estao em dia."),
+            ("Drepanocitose", "Se ha casos na familia, faz o teste antes de ter filhos.")
+        ]
+
+        for titulo, texto in dicas:
+            st.markdown(f'''
+            <div style="background:#FFFFFF;border:1px solid #E2E8F0;border-radius:10px;
+                        padding:1rem;margin-bottom:0.5rem;">
+                <div style="font-weight:600;color:#0F172A;font-size:0.88rem;">{titulo}</div>
+                <div style="color:#64748B;font-size:0.82rem;margin-top:0.2rem;">{texto}</div>
+            </div>
+            ''', unsafe_allow_html=True)
+
+    # === TAB SOBRE ===
+    with tab_sobre:
+        st.markdown('''
+        <div style="text-align:center;padding:2rem 0;">
+            <div style="width:64px;height:64px;background:#0F172A;border-radius:16px;
+                        display:inline-flex;align-items:center;justify-content:center;
+                        font-size:1.3rem;font-weight:800;color:#FFFFFF;margin-bottom:1rem;">
+                HS
+            </div>
+            <div style="font-size:1.5rem;font-weight:700;color:#0F172A;margin-bottom:0.3rem;">
+                HemaSakula
+            </div>
+            <div style="color:#64748B;font-size:0.88rem;margin-bottom:1.5rem;">
+                Angola a Cuidar dos Seus
+            </div>
+        </div>
+        ''', unsafe_allow_html=True)
+
+        st.markdown('''
+        <div style="background:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;
+                    padding:1.5rem;line-height:1.8;color:#475569;font-size:0.9rem;">
+            <strong style="color:#0F172A;">O que e o HemaSakula?</strong><br><br>
+            O HemaSakula e uma plataforma angolana que te ajuda a encontrar
+            clinicas e hospitais perto de ti. Alem disso, as clinicas parceiras
+            usam o nosso sistema inteligente para analisar exames de sangue
+            e dar melhores diagnosticos.<br><br>
+            <strong style="color:#0F172A;">Para ti (paciente):</strong><br>
+            &bull; Encontra clinicas e hospitais perto da tua zona<br>
+            &bull; Recebe alertas de saude para o teu municipio<br>
+            &bull; Sabe quando e altura de desparasitar, vacinar, fazer check-up<br><br>
+            <strong style="color:#0F172A;">Para clinicas e hospitais:</strong><br>
+            &bull; Sistema inteligente de apoio a decisao clinica<br>
+            &bull; Analise de hemogramas com inteligencia artificial<br>
+            &bull; Dados epidemiologicos por municipio e estacao<br><br>
+            <em>Feito com dedicacao para Angola.</em>
+        </div>
+        ''', unsafe_allow_html=True)
+
+    # footer
+    st.markdown('''
+    <div style="text-align:center;padding:1.5rem 0;margin-top:2rem;
+                border-top:1px solid #E2E8F0;color:#94A3B8;font-size:0.78rem;">
+        <strong>HemaSakula</strong> &middot; Angola a Cuidar dos Seus
+    </div>
+    ''', unsafe_allow_html=True)
+
+
+# =============================================
+# TELA 4 - PAINEL DA EMPRESA (sistema clinico)
+# =============================================
+
+def tela_painel_empresa():
+    """Painel da empresa - sistema de apoio a decisao clinica"""
+    st.markdown(css_painel_empresa(), unsafe_allow_html=True)
+
+    usuario = st.session_state.get('empresa_usuario', 'Empresa')
 
     col_header1, col_header2 = st.columns([3, 1])
-
     with col_header1:
         st.title("HemaSakula")
-        st.markdown(f'<p style="color:#64748B;font-size:1rem;margin-top:-0.5rem;font-style:italic;">{SLOGAN}</p>', unsafe_allow_html=True)
-
+        st.markdown(
+            f'<p style="color:#64748B;font-size:1rem;margin-top:-0.5rem;'
+            f'font-style:italic;">{SLOGAN}</p>',
+            unsafe_allow_html=True
+        )
     with col_header2:
-        usuario = st.session_state.get("usuario_atual", "")
-        st.markdown(f'<div style="text-align:right;padding-top:0.8rem;"><span style="color:#94A3B8;font-size:0.85rem;">{usuario.capitalize()} | {datetime.now().strftime("%d/%m/%Y")}</span></div>', unsafe_allow_html=True)
+        st.markdown(
+            f'<div style="text-align:right;padding-top:0.8rem;">'
+            f'<span style="color:#94A3B8;font-size:0.85rem;">'
+            f'{usuario.capitalize()} | {datetime.now().strftime("%d/%m/%Y")}'
+            f'</span></div>',
+            unsafe_allow_html=True
+        )
 
-    st.markdown('<div class="aviso-institucional"><p><strong>Atencao:</strong> Este sistema serve de apoio a decisao clinica. Nao substitui a avaliacao presencial nem o julgamento do profissional de saude. Interpreta sempre os resultados dentro do contexto clinico do doente.</p></div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="aviso-institucional"><p><strong>Atencao:</strong> '
+        'Este sistema serve de apoio a decisao clinica. Nao substitui a '
+        'avaliacao presencial nem o julgamento do profissional de saude.'
+        '</p></div>',
+        unsafe_allow_html=True
+    )
 
     modelo, encoders, features = carregar_modelo()
 
@@ -504,9 +1143,32 @@ def main():
         st.error("Modelo nao encontrado. Executa primeiro: python modelo_ml.py")
         return
 
-    st.markdown('<div class="status-operacional"><p>Sistema operacional - modelo carregado com sucesso</p></div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="status-operacional">'
+        '<p>Sistema operacional - modelo carregado com sucesso</p></div>',
+        unsafe_allow_html=True
+    )
 
+    # sidebar com dados do paciente
     with st.sidebar:
+        st.markdown(f'''
+        <div style="text-align:center;padding:0.8rem 0 1rem 0;">
+            <div style="width:48px;height:48px;background:#1E293B;border-radius:12px;
+                        display:inline-flex;align-items:center;justify-content:center;
+                        font-size:1rem;font-weight:700;color:#FFFFFF;margin-bottom:0.6rem;">
+                HS
+            </div>
+            <div style="color:#F1F5F9;font-weight:600;font-size:0.9rem;">
+                {usuario.capitalize()}
+            </div>
+            <div style="color:#475569;font-size:0.72rem;margin-top:0.15rem;">
+                Conta Profissional
+            </div>
+        </div>
+        ''', unsafe_allow_html=True)
+
+        st.markdown("---")
+
         st.header("Dados do Paciente")
 
         st.subheader("Identificacao")
@@ -535,6 +1197,15 @@ def main():
         status_genetico = st.selectbox("Hemoglobina (genetica)", STATUS_GENETICO)
         mordedura = st.checkbox("Mordedura animal recente")
 
+        st.markdown("---")
+
+        if st.button("Sair", key="btn_sair_empresa", use_container_width=True):
+            for k in ['ecra', 'empresa_usuario']:
+                if k in st.session_state:
+                    del st.session_state[k]
+            st.rerun()
+
+    # hemograma
     st.header("Hemograma")
 
     col1, col2, col3 = st.columns(3)
@@ -560,7 +1231,7 @@ def main():
 
         valido, soma = validar_leucograma(neutrofilos, linfocitos, monocitos, eosinofilos, basofilos)
         if not valido:
-            st.warning(f"O diferencial soma {soma:.1f}% - o esperado e proximo de 100%. Confere os valores.")
+            st.warning(f"O diferencial soma {soma:.1f}% - o esperado e proximo de 100%.")
 
     with col3:
         st.markdown('<p class="serie-plaquetas-header">Plaquetas e Outros</p>', unsafe_allow_html=True)
@@ -589,14 +1260,16 @@ def main():
                 'vpm': vpm, 'reticulocitos': reticulocitos
             }
 
-            gravidade, resultados, erro = processar_analise(modelo, encoders, features, dados)
+            gravidade, resultados, erro = processar_analise(
+                modelo, encoders, features, dados
+            )
 
             if erro:
                 st.error(f"Erro no processamento: {erro}")
                 return
 
             if not resultados:
-                st.error("Nao consegui gerar resultados. Confere os dados que meteste.")
+                st.error("Nao consegui gerar resultados. Confere os dados.")
                 return
 
             diag_principal = resultados[0][0]
@@ -607,19 +1280,51 @@ def main():
 
             with col_r1:
                 classe = obter_classe_gravidade(gravidade)
-                st.markdown(f'<div class="card"><div class="text-muted text-small" style="text-transform:uppercase;letter-spacing:0.05em;">Gravidade</div><div style="margin-top:0.75rem;"><span class="badge {classe}" style="font-size:0.9rem;padding:0.5rem 1rem;">{gravidade}</span></div></div>', unsafe_allow_html=True)
+                st.markdown(
+                    f'<div class="card"><div style="color:#64748B;font-size:0.78rem;'
+                    f'text-transform:uppercase;letter-spacing:0.05em;">'
+                    f'Gravidade</div><div style="margin-top:0.75rem;">'
+                    f'<span class="badge {classe}" '
+                    f'style="font-size:0.9rem;padding:0.5rem 1rem;">'
+                    f'{gravidade}</span></div></div>',
+                    unsafe_allow_html=True
+                )
 
             with col_r2:
-                st.markdown(f'<div class="card"><div class="text-muted text-small" style="text-transform:uppercase;letter-spacing:0.05em;">Referenciar para</div><div style="margin-top:0.75rem;font-weight:600;color:#0F172A;">{info_mun["hospital"]}</div></div>', unsafe_allow_html=True)
+                st.markdown(
+                    f'<div class="card"><div style="color:#64748B;font-size:0.78rem;'
+                    f'text-transform:uppercase;letter-spacing:0.05em;">'
+                    f'Referenciar para</div><div style="margin-top:0.75rem;'
+                    f'font-weight:600;color:#0F172A;">{info_mun["hospital"]}'
+                    f'</div></div>',
+                    unsafe_allow_html=True
+                )
 
             st.subheader("Hipoteses diagnosticas")
 
             for i, (diag, prob) in enumerate(resultados[:3]):
                 if i == 0:
-                    st.markdown(f'<div class="card" style="border-left:4px solid #1E293B;"><div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:1.1rem;font-weight:600;color:#0F172A;">1. {diag}</span><span style="background:#1E293B;color:white;padding:0.4rem 1rem;border-radius:6px;font-weight:600;">{prob:.1f}%</span></div></div>', unsafe_allow_html=True)
+                    st.markdown(
+                        f'<div class="card" style="border-left:4px solid #1E293B;">'
+                        f'<div style="display:flex;justify-content:space-between;'
+                        f'align-items:center;"><span style="font-size:1.1rem;'
+                        f'font-weight:600;color:#0F172A;">1. {diag}</span>'
+                        f'<span style="background:#1E293B;color:white;'
+                        f'padding:0.4rem 1rem;border-radius:6px;font-weight:600;">'
+                        f'{prob:.1f}%</span></div></div>',
+                        unsafe_allow_html=True
+                    )
                     st.progress(prob / 100)
                 else:
-                    st.markdown(f'<div class="card" style="padding:1rem 1.25rem;"><div style="display:flex;justify-content:space-between;align-items:center;"><span style="color:#334155;font-weight:500;">{i+1}. {diag}</span><span style="color:#64748B;font-weight:600;">{prob:.1f}%</span></div></div>', unsafe_allow_html=True)
+                    st.markdown(
+                        f'<div class="card" style="padding:1rem 1.25rem;">'
+                        f'<div style="display:flex;justify-content:space-between;'
+                        f'align-items:center;"><span style="color:#334155;'
+                        f'font-weight:500;">{i+1}. {diag}</span>'
+                        f'<span style="color:#64748B;font-weight:600;">'
+                        f'{prob:.1f}%</span></div></div>',
+                        unsafe_allow_html=True
+                    )
 
             st.subheader("O que fazer agora")
 
@@ -630,7 +1335,11 @@ def main():
                 else:
                     st.info(f"**Conduta:** {cond['leve']}")
 
-                st.markdown(f'<div class="card"><strong>Exame pra confirmar:</strong> {cond["exame"]}</div>', unsafe_allow_html=True)
+                st.markdown(
+                    f'<div class="card"><strong>Exame pra confirmar:</strong> '
+                    f'{cond["exame"]}</div>',
+                    unsafe_allow_html=True
+                )
 
                 if cond['alertas']:
                     with st.expander("Sinais de alarme - referenciar ja"):
@@ -673,7 +1382,36 @@ def main():
                     "Cada hora conta."
                 )
 
-    st.markdown(f'<div class="footer"><strong>HemaSakula</strong><br>{SLOGAN}<br><span style="font-size:0.75rem;">Feito com dedicacao pra Angola</span></div>', unsafe_allow_html=True)
+    st.markdown(
+        f'<div class="footer"><strong>HemaSakula</strong><br>{SLOGAN}<br>'
+        f'<span style="font-size:0.75rem;">Feito com dedicacao pra Angola | '
+        f'v3.0</span></div>',
+        unsafe_allow_html=True
+    )
+
+
+# =============================================
+# MAIN - NAVEGACAO POR ECRAS
+# =============================================
+
+def main():
+    # determinar ecra actual
+    ecra = st.session_state.get('ecra', 'inicio')
+
+    if ecra == 'inicio':
+        tela_boas_vindas()
+
+    elif ecra == 'login_empresa':
+        tela_login_empresa()
+
+    elif ecra == 'cliente':
+        tela_painel_cliente()
+
+    elif ecra == 'empresa':
+        tela_painel_empresa()
+
+    else:
+        tela_boas_vindas()
 
 
 if __name__ == "__main__":
