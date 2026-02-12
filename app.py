@@ -8,15 +8,13 @@ import os
 import re
 from datetime import datetime
 
-# --- Configuração da Página ---
 st.set_page_config(
-    page_title="HemaSakula",
+    page_title="HemaSakula — Angola a Cuidar dos Seus",
     page_icon="🩸",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# --- Constantes e Dados ---
 FICHEIRO_CLIENTES = 'dados_clientes.json'
 
 MUNICIPIOS_LISTA = [
@@ -79,7 +77,7 @@ CONDUTAS = {
         'exame': 'Gota espessa ou teste rápido (TDR)',
         'alertas': [
             'Convulsões',
-            'Prostração - não come, não bebe, não anda',
+            'Prostração — não come, não bebe, não anda',
             'Vómitos que não param',
             'Urina escura (cor de coca-cola)',
             'Falta de ar',
@@ -90,7 +88,7 @@ CONDUTAS = {
     'Dengue': {
         'leve': (
             'Hidratar bem por via oral (60-80 mL/kg/dia). Paracetamol para febre. '
-            'Nada de ibuprofeno nem aspirina - pode causar hemorragia.'
+            'Nada de ibuprofeno nem aspirina — pode causar hemorragia.'
         ),
         'grave': (
             'Soro EV e monitorizar o hematócrito de 2 em 2 horas. Se o Ht subir '
@@ -117,27 +115,27 @@ CONDUTAS = {
         ),
         'exame': 'Electroforese de hemoglobina',
         'alertas': [
-            'Febre - num drepanocítico é sempre urgência',
-            'Dor no peito - pode ser síndrome torácica aguda',
+            'Febre — num drepanocítico é sempre urgência',
+            'Dor no peito — pode ser síndrome torácica aguda',
             'Priapismo',
-            'Sinais de AVC - braço ou perna sem força, fala enrolada, boca torta'
+            'Sinais de AVC — braço ou perna sem força, fala enrolada, boca torta'
         ]
     },
     'Anemia Ferropriva': {
         'leve': (
             'Sulfato ferroso durante 3 a 6 meses. Tomar em jejum com '
-            'sumo de limão - a vitamina C ajuda a absorver melhor o ferro. '
-            'Avisar que as fezes ficam escuras - é normal, não se preocupar.'
+            'sumo de limão — a vitamina C ajuda a absorver melhor o ferro. '
+            'Avisar que as fezes ficam escuras — é normal, não se preocupar.'
         ),
         'grave': (
             'Se a Hb estiver abaixo de 5 g/dL, pensar em transfusão. '
-            'Investigar a causa - parasitose? Hemorragia escondida?'
+            'Investigar a causa — parasitose? Hemorragia escondida?'
         ),
         'exame': 'Ferritina sérica',
         'alertas': [
             'Falta de ar mesmo parado',
             'Coração a bater muito rápido',
-            'Palidez intensa - ver as palmas das mãos e os olhos'
+            'Palidez intensa — ver as palmas das mãos e os olhos'
         ]
     },
     'Colera': {
@@ -165,12 +163,12 @@ CONDUTAS = {
         ),
         'grave': (
             'Ceftriaxona EV 2 g/dia + internamento. '
-            'Ficar atento a sinais de perfuração intestinal - '
+            'Ficar atento a sinais de perfuração intestinal — '
             'barriga dura, dor forte, febre em pico.'
         ),
         'exame': 'Hemocultura (de preferência) ou coprocultura',
         'alertas': [
-            'Barriga dura como tábua - pode ter perfurado',
+            'Barriga dura como tábua — pode ter perfurado',
             'Confusão mental',
             'Sangue nas fezes'
         ]
@@ -187,7 +185,7 @@ CONDUTAS = {
         ),
         'exame': 'Exame parasitológico de fezes (3 amostras)',
         'alertas': [
-            'Barriga muito inchada - risco de obstrução',
+            'Barriga muito inchada — risco de obstrução',
             'Desnutrição grave, principalmente nas crianças'
         ]
     },
@@ -199,7 +197,7 @@ CONDUTAS = {
         ),
         'grave': (
             'Internamento. Investigar formas fora do pulmão. '
-            'Se for HIV+, coordenar com o TARV - cuidado com as interacções.'
+            'Se for HIV+, coordenar com o TARV — cuidado com as interacções.'
         ),
         'exame': 'Baciloscopia (BK) ou GeneXpert',
         'alertas': [
@@ -218,7 +216,7 @@ CONDUTAS = {
         'grave': (
             'Tratar primeiro a infecção oportunista que estiver activa. '
             'Começar o TARV 2 semanas depois (excepto meningite '
-            'criptocócica - aí esperar 4 a 6 semanas). Referenciar ao CTA.'
+            'criptocócica — aí esperar 4 a 6 semanas). Referenciar ao CTA.'
         ),
         'exame': 'Teste rápido HIV + CD4 + carga viral',
         'alertas': [
@@ -230,7 +228,7 @@ CONDUTAS = {
     },
     'Raiva (Mordedura)': {
         'leve': (
-            'Lavar a ferida com água e sabão durante 15 minutos - '
+            'Lavar a ferida com água e sabão durante 15 minutos — '
             'essa medida salva vidas. Vacina anti-rábica nos dias 0, 3, 7 e 14. '
             'Não coser a ferida.'
         ),
@@ -239,7 +237,7 @@ CONDUTAS = {
             'Se o animal morreu ou fugiu, tratar como alto risco. '
             'Cada hora conta.'
         ),
-        'exame': 'Não esperar confirmação laboratorial - tratar já',
+        'exame': 'Não esperar confirmação laboratorial — tratar já',
         'alertas': [
             'Medo de água (hidrofobia)',
             'Medo de vento (aerofobia)',
@@ -260,18 +258,15 @@ CONDUTAS = {
 }
 
 
-# --- Funções de Persistência ---
 def carregar_clientes():
     if os.path.exists(FICHEIRO_CLIENTES):
         with open(FICHEIRO_CLIENTES, 'r', encoding='utf-8') as f:
             return json.load(f)
     return {}
 
-
 def guardar_clientes(dados):
     with open(FICHEIRO_CLIENTES, 'w', encoding='utf-8') as f:
         json.dump(dados, f, ensure_ascii=False, indent=2)
-
 
 def registar_cliente(nome, telefone, municipio, email=''):
     clientes = carregar_clientes()
@@ -296,19 +291,15 @@ def registar_cliente(nome, telefone, municipio, email=''):
     guardar_clientes(clientes)
     return True, cliente
 
-
-# --- Funções de Validação e Utilitários ---
 def validar_email(email):
     if not email:
         return True
     padrao = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
     return bool(re.match(padrao, email))
 
-
 def validar_telefone(telefone):
     numeros = re.sub(r'[^0-9]', '', telefone)
     return len(numeros) == 9 and numeros[0] == '9'
-
 
 def obter_saudacao():
     hora = datetime.now().hour
@@ -317,7 +308,6 @@ def obter_saudacao():
     elif hora < 18:
         return "Boa tarde"
     return "Boa noite"
-
 
 @st.cache_resource
 def carregar_modelo():
@@ -332,10 +322,8 @@ def carregar_modelo():
     except FileNotFoundError:
         return None, None, None
 
-
 def formatar_numero(valor):
     return f"{valor:,.0f}".replace(",", ".")
-
 
 def classificar_valor(valor, minimo, maximo):
     if valor < minimo:
@@ -343,7 +331,6 @@ def classificar_valor(valor, minimo, maximo):
     elif valor > maximo:
         return "alto", "Alto"
     return "normal", "Normal"
-
 
 def determinar_gravidade(hb, plt):
     if hb < 5 or plt < 20000:
@@ -354,20 +341,9 @@ def determinar_gravidade(hb, plt):
         return "MODERADO"
     return "LEVE"
 
-
-def obter_classe_gravidade(gravidade):
-    return {
-        "LEVE": "badge-leve",
-        "MODERADO": "badge-moderado",
-        "GRAVE": "badge-grave",
-        "CRITICO": "badge-critico"
-    }.get(gravidade, "badge-leve")
-
-
 def validar_leucograma(neutrofilos, linfocitos, monocitos, eosinofilos, basofilos):
     soma = neutrofilos + linfocitos + monocitos + eosinofilos + basofilos
     return (abs(soma - 100) <= 5, soma)
-
 
 def fazer_predicao(modelo, encoders, features, dados):
     try:
@@ -383,11 +359,14 @@ def fazer_predicao(modelo, encoders, features, dados):
                     df_temp[col + '_cod'] = 0
             else:
                 df_temp[col + '_cod'] = 0
+
         df_temp['gestante_int'] = int(dados.get('gestante', False))
         df_temp['mordedura_int'] = int(dados.get('mordedura_recente', False))
+
         for feat in features:
             if feat not in df_temp.columns:
                 df_temp[feat] = 0
+
         X_pred = df_temp[features]
         probas = modelo.predict_proba(X_pred)[0]
         le_diag = encoders['diagnostico']
@@ -399,7 +378,6 @@ def fazer_predicao(modelo, encoders, features, dados):
         return resultados[:5], None
     except Exception as e:
         return None, str(e)
-
 
 def processar_analise(modelo, encoders, features, dados_paciente):
     progress_bar = st.progress(0)
@@ -414,8 +392,10 @@ def processar_analise(modelo, encoders, features, dados_paciente):
         status_text.text(texto)
         time.sleep(0.2)
         progress_bar.progress(progresso)
+
     gravidade = determinar_gravidade(
-        dados_paciente['hemoglobina'], dados_paciente['plaquetas']
+        dados_paciente['hemoglobina'],
+        dados_paciente['plaquetas']
     )
     resultados, erro = fazer_predicao(modelo, encoders, features, dados_paciente)
     progress_bar.empty()
@@ -423,539 +403,1347 @@ def processar_analise(modelo, encoders, features, dados_paciente):
     return gravidade, resultados, erro
 
 
-# --- CSS Customizado (Inspirado no "We are OSM") ---
-# Estilo: Minimalista, Alto Contraste, Tipografia Bold, Cards Limpos
-
-CSS_GLOBAL = """
-<style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
+def css_global():
+    return """<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
     :root {
-        --bg-color: #FFFFFF;
-        --text-color: #0F172A;
-        --accent-color: #10B981; /* Verde similar ao OSM */
-        --accent-dark: #059669;
-        --secondary-bg: #F8FAFC;
-        --border-color: #E2E8F0;
-        --danger: #EF4444;
-        --warning: #F59E0B;
+        --pri: #15291C;
+        --pri-hover: #1E3A28;
+        --sec: #D4E7DC;
+        --accent: #C9553A;
+        --bg: #FAFAF8;
+        --surface: #FFFFFF;
+        --surface-alt: #F3F2EE;
+        --text: #1A1A18;
+        --text-secondary: #5A5A52;
+        --text-muted: #8A8A82;
+        --border: #DDDCD7;
+        --border-strong: #1A1A18;
+        --success: #1B6B3A;
+        --danger: #8B1A1A;
+        --radius: 0px;
     }
 
-    .stApp {
-        background-color: var(--bg-color);
-        color: var(--text-color);
-        font-family: 'Inter', sans-serif;
+    * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important; }
+    .stApp { background: var(--bg) !important; }
+
+    [data-testid="stSidebar"] { display: none !important; }
+    header[data-testid="stHeader"] { display: none !important; }
+    #MainMenu, footer, .stDeployButton { display: none !important; }
+
+    .stTextInput > label,
+    .stSelectbox > label,
+    .stNumberInput > label,
+    .stCheckbox > label {
+        color: var(--text) !important;
+        font-size: 0.7rem !important;
+        font-weight: 700 !important;
+        letter-spacing: 0.14em !important;
+        text-transform: uppercase !important;
+        margin-bottom: 0.5rem !important;
     }
 
-    /* Esconder elementos do Streamlit */
-    #MainMenu, footer, .stDeployButton, header[data-testid="stHeader"] {
-        visibility: hidden;
-        display: none !important;
+    .stTextInput > div > div > input {
+        background: var(--surface) !important;
+        border: 2.5px solid var(--border) !important;
+        border-radius: var(--radius) !important;
+        color: var(--text) !important;
+        padding: 1rem 1.1rem !important;
+        font-size: 0.95rem !important;
+        font-weight: 400 !important;
+        transition: border-color 0.3s ease, box-shadow 0.3s ease !important;
+        -webkit-appearance: none !important;
     }
 
-    /* Tipografia */
-    h1, h2, h3, h4, h5, h6 {
-        font-family: 'Inter', sans-serif !important;
-        font-weight: 800 !important;
-        color: var(--text-color) !important;
-        letter-spacing: -0.02em;
+    .stTextInput > div > div > input:focus {
+        border-color: var(--border-strong) !important;
+        box-shadow: none !important;
+        background: var(--surface) !important;
     }
 
-    p, div, span, label {
-        font-family: 'Inter', sans-serif !important;
-        color: var(--text-color);
+    .stTextInput > div > div > input::placeholder {
+        color: #B5B3AD !important;
+        font-weight: 400 !important;
     }
 
-    /* Inputs e Botões */
-    .stTextInput > div > div > input,
-    .stSelectbox > div > div {
-        border-radius: 8px !important;
-        border: 2px solid var(--border-color) !important;
+    div[data-baseweb="select"] {
+        color: var(--text) !important;
+    }
+
+    div[data-baseweb="select"] > div {
+        background: var(--surface) !important;
+        border: 2.5px solid var(--border) !important;
+        border-radius: var(--radius) !important;
+        color: var(--text) !important;
+        min-height: 48px !important;
+        transition: border-color 0.3s ease !important;
+    }
+
+    div[data-baseweb="select"] > div:hover {
+        border-color: var(--text-muted) !important;
+    }
+
+    div[data-baseweb="select"] > div:focus-within {
+        border-color: var(--border-strong) !important;
+        box-shadow: none !important;
+    }
+
+    div[data-baseweb="select"] * {
+        color: var(--text) !important;
+    }
+
+    div[data-baseweb="select"] span {
+        color: var(--text) !important;
+        font-weight: 400 !important;
+        font-size: 0.95rem !important;
+    }
+
+    div[data-baseweb="select"] [data-testid="stMarkdownContainer"],
+    div[data-baseweb="select"] div[class*="ValueContainer"] span,
+    div[data-baseweb="select"] div[class*="singleValue"],
+    div[data-baseweb="select"] div[class*="SingleValue"],
+    div[data-baseweb="select"] div[class*="placeholder"],
+    div[data-baseweb="select"] input {
+        color: var(--text) !important;
+    }
+
+    div[data-baseweb="select"] div[class*="placeholder"] {
+        color: #B5B3AD !important;
+    }
+
+    div[data-baseweb="select"] svg {
+        fill: var(--text-muted) !important;
+        color: var(--text-muted) !important;
+    }
+
+    div[data-baseweb="popover"] {
+        border-radius: var(--radius) !important;
+        border: none !important;
+        box-shadow: 0 12px 48px rgba(26,26,24,0.12) !important;
+    }
+
+    div[data-baseweb="popover"] ul {
+        background: var(--surface) !important;
+        border: 2px solid var(--border) !important;
+        border-radius: var(--radius) !important;
+        padding: 6px !important;
+    }
+
+    div[data-baseweb="popover"] li {
+        color: var(--text) !important;
+        font-size: 0.9rem !important;
+        font-weight: 400 !important;
+        border-radius: var(--radius) !important;
         padding: 10px 14px !important;
-        font-weight: 500;
-        transition: all 0.2s;
+        transition: background 0.15s ease !important;
     }
 
-    .stTextInput > div > div > input:focus,
-    .stSelectbox > div > div:focus-within {
-        border-color: var(--accent-color) !important;
-        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2) !important;
+    div[data-baseweb="popover"] li:hover {
+        background: var(--surface-alt) !important;
+        color: var(--text) !important;
     }
+
+    div[data-baseweb="popover"] li[aria-selected="true"],
+    div[data-baseweb="select"] [aria-selected="true"] {
+        color: var(--text) !important;
+        background: var(--sec) !important;
+        font-weight: 600 !important;
+    }
+
+    .stSelectbox [data-baseweb="select"] > div {
+        color: var(--text) !important;
+    }
+
+    .stSelectbox [data-baseweb="select"] > div > div {
+        color: var(--text) !important;
+    }
+
+    .stSelectbox [data-baseweb="select"] > div > div > div {
+        color: var(--text) !important;
+    }
+
+    *:focus { outline: none !important; }
+    input:focus, select:focus, textarea:focus { outline: none !important; }
+    input:invalid, input:required { border-color: var(--border) !important; box-shadow: none !important; }
 
     .stButton > button {
-        background-color: var(--text-color) !important;
-        color: white !important;
-        border-radius: 8px !important;
-        padding: 12px 24px !important;
+        background: transparent !important;
+        color: var(--text) !important;
+        border: 3px solid var(--border-strong) !important;
+        border-radius: var(--radius) !important;
         font-weight: 700 !important;
-        border: none !important;
-        transition: transform 0.1s, background-color 0.2s;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
+        font-size: 0.78rem !important;
+        padding: 1rem 2.4rem !important;
+        width: 100% !important;
+        letter-spacing: 0.13em !important;
+        text-transform: uppercase !important;
+        transition: all 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
+        cursor: pointer !important;
     }
 
     .stButton > button:hover {
-        background-color: var(--accent-dark) !important;
-        transform: translateY(-1px);
+        background: var(--pri) !important;
+        color: var(--bg) !important;
+        border-color: var(--pri) !important;
+        transform: none !important;
+        box-shadow: none !important;
     }
 
     .stButton > button:active {
-        transform: translateY(0);
+        background: #0D1E13 !important;
+        border-color: #0D1E13 !important;
+        color: var(--bg) !important;
+        transform: none !important;
     }
 
-    /* Botão Secundário (Outline) */
-    .btn-outline > button {
-        background-color: transparent !important;
-        color: var(--text-color) !important;
-        border: 2px solid var(--text-color) !important;
-    }
-    .btn-outline > button:hover {
-        background-color: var(--text-color) !important;
-        color: white !important;
-    }
-
-    /* Cards */
-    .osm-card {
-        background: white;
-        border: 1px solid var(--border-color);
-        border-radius: 12px;
-        padding: 24px;
-        margin-bottom: 16px;
-        transition: box-shadow 0.2s;
-    }
-    .osm-card:hover {
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-    }
-
-    /* Badges */
-    .badge {
-        display: inline-block;
-        padding: 4px 12px;
-        border-radius: 20px;
-        font-size: 0.75rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
-    .badge-leve { background: #D1FAE5; color: #065F46; }
-    .badge-moderado { background: #FEF3C7; color: #92400E; }
-    .badge-grave { background: #FEE2E2; color: #991B1B; }
-    .badge-critico { background: #7F1D1D; color: white; }
-
-    /* Layout Helpers */
-    .center-content {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        text-align: center;
-    }
-
-    .hero-title {
-        font-size: 3rem;
-        font-weight: 800;
-        line-height: 1.1;
-        margin-bottom: 1rem;
-    }
-
-    .hero-subtitle {
-        font-size: 1.1rem;
-        color: #64748B;
-        max-width: 500px;
-        margin-bottom: 2rem;
-        line-height: 1.6;
-    }
-
-    /* Animações */
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-    .animate-fade-in {
-        animation: fadeIn 0.5s ease-out forwards;
-    }
-
-    /* Tabs */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
-        background: transparent;
-    }
-    .stTabs [data-baseweb="tab"] {
-        background: transparent;
-        border: none;
-        border-bottom: 2px solid transparent;
-        color: #64748B;
-        font-weight: 600;
-    }
-    .stTabs [aria-selected="true"] {
-        color: var(--text-color) !important;
-        border-bottom: 2px solid var(--text-color) !important;
+    .stFormSubmitButton > button {
         background: transparent !important;
+        color: var(--text) !important;
+        border: 3px solid var(--border-strong) !important;
+        border-radius: var(--radius) !important;
+        font-weight: 700 !important;
+        font-size: 0.78rem !important;
+        padding: 1rem 2.4rem !important;
+        letter-spacing: 0.13em !important;
+        text-transform: uppercase !important;
+        transition: all 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
     }
 
-    /* Sidebar */
-    [data-testid="stSidebar"] {
-        background-color: var(--secondary-bg);
-        border-right: 1px solid var(--border-color);
-    }
-    [data-testid="stSidebar"] .stButton > button {
-        width: 100%;
+    .stFormSubmitButton > button:hover {
+        background: var(--pri) !important;
+        color: var(--bg) !important;
+        border-color: var(--pri) !important;
     }
 
-    /* Alerts */
-    .stAlert {
-        border-radius: 8px !important;
+    .stAlert, [data-testid="stNotification"] {
+        border-radius: var(--radius) !important;
+        border: 2px solid var(--border) !important;
+    }
+
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 0;
+        background: transparent;
+        border-bottom: 2px solid var(--border);
+        border-radius: 0;
+        padding: 0;
+    }
+
+    .stTabs [data-baseweb="tab"] {
+        background: transparent !important;
+        color: var(--text-muted) !important;
         border: none !important;
+        border-bottom: 3px solid transparent !important;
+        border-radius: 0 !important;
+        font-weight: 600 !important;
+        font-size: 0.75rem !important;
+        padding: 0.9rem 1.6rem !important;
+        letter-spacing: 0.1em !important;
+        text-transform: uppercase !important;
+        transition: all 0.3s ease !important;
+        margin-bottom: -2px !important;
     }
-</style>
-"""
 
-# --- Telas da Aplicação ---
+    .stTabs [data-baseweb="tab"]:hover {
+        color: var(--text) !important;
+    }
+
+    .stTabs [aria-selected="true"] {
+        background: transparent !important;
+        color: var(--text) !important;
+        font-weight: 700 !important;
+        border-bottom: 3px solid var(--text) !important;
+        box-shadow: none !important;
+    }
+
+    .stTabs [data-baseweb="tab-highlight"] {
+        display: none !important;
+    }
+
+    .stTabs [data-baseweb="tab-border"] {
+        display: none !important;
+    }
+
+    [data-testid="stMetric"] {
+        background: var(--surface);
+        border: 2px solid var(--border);
+        border-radius: var(--radius);
+        padding: 1.4rem;
+    }
+
+    [data-testid="stMetric"] label {
+        color: var(--text-muted) !important;
+        font-weight: 700 !important;
+        letter-spacing: 0.1em;
+        font-size: 0.65rem !important;
+        text-transform: uppercase !important;
+    }
+
+    [data-testid="stMetric"] [data-testid="stMetricValue"] {
+        color: var(--text) !important;
+        font-weight: 800 !important;
+    }
+
+    .stProgress > div > div {
+        background: var(--pri) !important;
+        border-radius: 0;
+        height: 3px !important;
+    }
+
+    .stProgress > div {
+        background: var(--border) !important;
+        border-radius: 0;
+        height: 3px !important;
+    }
+
+    .stNumberInput input {
+        background: var(--surface) !important;
+        border: 2.5px solid var(--border) !important;
+        border-radius: var(--radius) !important;
+        color: var(--text) !important;
+        font-weight: 500 !important;
+    }
+
+    .stNumberInput input:focus {
+        border-color: var(--border-strong) !important;
+        box-shadow: none !important;
+    }
+
+    .stNumberInput button {
+        background: var(--surface-alt) !important;
+        border: 2px solid var(--border) !important;
+        border-radius: var(--radius) !important;
+        color: var(--text-muted) !important;
+    }
+
+    .stNumberInput button:hover {
+        background: var(--border) !important;
+        color: var(--text) !important;
+    }
+
+    .stCheckbox label span[data-testid="stCheckboxLabel"] {
+        color: var(--text) !important;
+        font-size: 0.88rem !important;
+    }
+
+    [data-testid="stExpander"] {
+        border: 2px solid var(--border) !important;
+        border-radius: var(--radius) !important;
+        background: var(--surface) !important;
+    }
+
+    [data-testid="stExpander"] summary {
+        font-weight: 600 !important;
+        color: var(--text) !important;
+    }
+
+    div[data-testid="stMarkdownContainer"] p {
+        line-height: 1.75 !important;
+    }
+
+    </style>"""
+
+
+def css_tela_inicio():
+    return """<style>
+    .main .block-container {
+        max-width: 480px;
+        margin: 0 auto;
+        padding-top: 0 !important;
+        padding-bottom: 3rem !important;
+    }
+    </style>"""
+
+
+def css_painel_cliente():
+    return """<style>
+    .main .block-container {
+        max-width: 780px;
+        margin: 0 auto;
+        padding: 1.5rem 2rem;
+    }
+    </style>"""
+
+
+def css_painel_empresa():
+    return """<style>
+    .main .block-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem 3rem;
+    }
+
+    [data-testid="stSidebar"] {
+        display: block !important;
+        background-color: var(--pri) !important;
+        border-right: none;
+    }
+
+    [data-testid="stSidebar"] h1,
+    [data-testid="stSidebar"] h2,
+    [data-testid="stSidebar"] h3 {
+        color: #E8E6E1 !important;
+        font-size: 0.7rem !important;
+        font-weight: 700 !important;
+        letter-spacing: 0.14em !important;
+        text-transform: uppercase !important;
+        border-bottom: 1px solid #2A4435 !important;
+        padding-bottom: 0.6rem !important;
+    }
+
+    [data-testid="stSidebar"] label {
+        color: #8A9B8E !important;
+        font-size: 0.65rem !important;
+    }
+
+    [data-testid="stSidebar"] p,
+    [data-testid="stSidebar"] span {
+        color: #8A9B8E !important;
+    }
+
+    [data-testid="stSidebar"] strong {
+        color: #B5C4B8 !important;
+    }
+
+    [data-testid="stSidebar"] .stSelectbox > div > div,
+    [data-testid="stSidebar"] div[data-baseweb="select"] > div {
+        background-color: #1E3A28 !important;
+        border: 2px solid #2A4435 !important;
+        border-radius: var(--radius) !important;
+    }
+
+    [data-testid="stSidebar"] div[data-baseweb="select"] *,
+    [data-testid="stSidebar"] div[data-baseweb="select"] span,
+    [data-testid="stSidebar"] div[data-baseweb="select"] div {
+        color: #E8E6E1 !important;
+    }
+
+    [data-testid="stSidebar"] div[data-baseweb="select"] svg {
+        fill: #5A6B5E !important;
+        color: #5A6B5E !important;
+    }
+
+    [data-testid="stSidebar"] .stNumberInput input {
+        background-color: #1E3A28 !important;
+        border: 2px solid #2A4435 !important;
+        border-radius: var(--radius) !important;
+        color: #E8E6E1 !important;
+    }
+
+    [data-testid="stSidebar"] .stNumberInput button {
+        background-color: #2A4435 !important;
+        border-color: #2A4435 !important;
+        color: #B5C4B8 !important;
+        border-radius: var(--radius) !important;
+    }
+
+    [data-testid="stSidebar"] .stCheckbox label span {
+        color: #B5C4B8 !important;
+    }
+
+    [data-testid="stSidebar"] .stButton > button {
+        background: transparent !important;
+        border: 2.5px solid #2A4435 !important;
+        color: #8A9B8E !important;
+        border-radius: var(--radius) !important;
+    }
+
+    [data-testid="stSidebar"] .stButton > button:hover {
+        background: #1E3A28 !important;
+        border-color: #5A6B5E !important;
+        color: #FFFFFF !important;
+    }
+
+    [data-testid="stSidebar"] hr {
+        border-color: #2A4435 !important;
+    }
+    </style>"""
+
+
+def componente_logo(tamanho="grande"):
+    if tamanho == "grande":
+        return '''
+        <div style="text-align:center;margin-bottom:2rem;">
+            <div style="width:80px;height:80px;background:#15291C;
+                border-radius:0;display:inline-flex;align-items:center;
+                justify-content:center;margin-bottom:1.8rem;">
+                <svg width="40" height="40" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="22" cy="22" r="16" stroke="#D4E7DC" stroke-width="2.5" fill="none"/>
+                    <circle cx="22" cy="22" r="8" fill="#C9553A"/>
+                    <line x1="22" y1="2" x2="22" y2="10" stroke="#D4E7DC" stroke-width="2" stroke-linecap="round"/>
+                    <line x1="22" y1="34" x2="22" y2="42" stroke="#D4E7DC" stroke-width="2" stroke-linecap="round"/>
+                    <line x1="2" y1="22" x2="10" y2="22" stroke="#D4E7DC" stroke-width="2" stroke-linecap="round"/>
+                    <line x1="34" y1="22" x2="42" y2="22" stroke="#D4E7DC" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+            </div>
+            <div style="font-size:3rem;font-weight:900;color:#1A1A18;
+                letter-spacing:-0.05em;line-height:0.95;">
+                Hema<br>Sakula
+            </div>
+            <div style="font-size:0.68rem;color:#8A8A82;letter-spacing:0.18em;
+                text-transform:uppercase;margin-top:1rem;font-weight:600;">
+                Angola a Cuidar dos Seus
+            </div>
+        </div>'''
+    else:
+        return '''
+        <div style="display:flex;align-items:center;gap:0.7rem;">
+            <div style="width:38px;height:38px;background:#15291C;
+                border-radius:0;display:flex;align-items:center;
+                justify-content:center;flex-shrink:0;">
+                <svg width="20" height="20" viewBox="0 0 44 44" fill="none">
+                    <circle cx="22" cy="22" r="16" stroke="#D4E7DC" stroke-width="2.5" fill="none"/>
+                    <circle cx="22" cy="22" r="8" fill="#C9553A"/>
+                    <line x1="22" y1="2" x2="22" y2="10" stroke="#D4E7DC" stroke-width="2" stroke-linecap="round"/>
+                    <line x1="22" y1="34" x2="22" y2="42" stroke="#D4E7DC" stroke-width="2" stroke-linecap="round"/>
+                    <line x1="2" y1="22" x2="10" y2="22" stroke="#D4E7DC" stroke-width="2" stroke-linecap="round"/>
+                    <line x1="34" y1="22" x2="42" y2="22" stroke="#D4E7DC" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+            </div>
+            <div>
+                <div style="font-size:1.1rem;font-weight:800;color:#1A1A18;
+                    letter-spacing:-0.03em;">HemaSakula</div>
+            </div>
+        </div>'''
+
+
+def componente_linha():
+    return '<div style="height:1px;background:var(--border,#DDDCD7);margin:2rem 0;"></div>'
+
+
+def componente_linha_fina():
+    return '''<div style="margin:1rem 0 1.5rem 0;">
+        <div style="height:3px;background:#1A1A18;width:48px;"></div>
+    </div>'''
+
+
+def componente_card(conteudo, borda_esquerda=None):
+    borda = f"border-left:4px solid {borda_esquerda};" if borda_esquerda else ""
+    return f'''<div style="background:#FFFFFF;border:2px solid #DDDCD7;{borda}
+        border-radius:0;padding:1.3rem 1.4rem;margin-bottom:0.6rem;
+        transition:border-color 0.3s ease;"
+        onmouseover="this.style.borderColor='#1A1A18'"
+        onmouseout="this.style.borderColor='#DDDCD7'">{conteudo}</div>'''
+
+
+def componente_badge(texto, tipo="normal"):
+    cores = {
+        "normal": "background:#F3F2EE;color:#1A1A18;border:2px solid #DDDCD7;",
+        "sucesso": "background:#E8F5ED;color:#1B6B3A;border:2px solid #B8D8C4;",
+        "alerta": "background:#FDF2E9;color:#C9553A;border:2px solid #F0C9B5;",
+        "perigo": "background:#FCEAEA;color:#8B1A1A;border:2px solid #E8B5B5;",
+        "critico": "background:#1A1A18;color:#FAFAF8;border:2px solid #1A1A18;",
+        "info": "background:#E8EFF7;color:#1E3A6E;border:2px solid #B5CCEB;",
+    }
+    estilo = cores.get(tipo, cores["normal"])
+    return f'''<span style="{estilo}display:inline-block;padding:0.35rem 0.9rem;
+        border-radius:0;font-size:0.68rem;font-weight:700;
+        letter-spacing:0.1em;text-transform:uppercase;">{texto}</span>'''
+
+
+def componente_label(texto):
+    return f'''<div style="color:#8A8A82;font-size:0.68rem;text-transform:uppercase;
+        letter-spacing:0.14em;font-weight:700;margin-bottom:0.8rem;">{texto}</div>'''
+
+
+def componente_footer():
+    return '''
+    <div style="text-align:center;padding:3rem 0;margin-top:4rem;
+        border-top:2px solid #DDDCD7;">
+        <div style="color:#8A8A82;font-size:0.65rem;letter-spacing:0.18em;
+            text-transform:uppercase;font-weight:700;margin-bottom:0.5rem;">
+            HemaSakula
+        </div>
+        <div style="color:#B5B3AD;font-size:0.82rem;font-weight:400;">
+            A tua saúde importa. Estamos aqui por ti.
+        </div>
+    </div>'''
+
 
 def tela_boas_vindas():
-    st.markdown(CSS_GLOBAL, unsafe_allow_html=True)
+    st.markdown(css_global(), unsafe_allow_html=True)
+    st.markdown(css_tela_inicio(), unsafe_allow_html=True)
 
-    # Container centralizado
-    col1, col2, col3 = st.columns([1, 3, 1])
-    with col2:
-        st.markdown("<div style='height: 10vh;'></div>", unsafe_allow_html=True)
+    saudacao = obter_saudacao()
 
-        # Logo / Brand
-        st.markdown("""
-        <div class='center-content animate-fade-in'>
-            <div style='width: 80px; height: 80px; background: #0F172A; border-radius: 20px; 
-                        display: flex; align-items: center; justify-content: center; 
-                        color: white; font-size: 2rem; font-weight: 800; margin-bottom: 24px;'>
-                HS
-            </div>
+    st.markdown("<div style='height:6vh;'></div>", unsafe_allow_html=True)
+
+    st.markdown(componente_logo("grande"), unsafe_allow_html=True)
+
+    st.markdown(componente_linha(), unsafe_allow_html=True)
+
+    st.markdown(f'''
+    <div style="text-align:center;margin-bottom:2.5rem;">
+        <div style="font-size:1.8rem;font-weight:800;color:#1A1A18;
+            letter-spacing:-0.03em;margin-bottom:0.8rem;">
+            {saudacao}.
         </div>
-        """, unsafe_allow_html=True)
-
-        # Título e Subtítulo
-        st.markdown(f"""
-        <div class='center-content animate-fade-in' style='animation-delay: 0.1s;'>
-            <h1 class='hero-title'>Cuidamos da tua saúde.</h1>
-            <p class='hero-subtitle'>
-                A HemaSakula conecta-te com os melhores hospitais e clínicas de Angola. 
-                Tecnologia inteligente ao serviço do bem-estar da tua família.
-            </p>
+        <div style="font-size:0.95rem;color:#8A8A82;line-height:1.8;
+            max-width:360px;margin:0 auto;">
+            Encontra clínicas e hospitais perto de ti.
+            Cuida da tua saúde com quem te entende.
         </div>
-        """, unsafe_allow_html=True)
+    </div>
+    ''', unsafe_allow_html=True)
 
-        # Formulário
-        with st.container():
-            st.markdown("<div class='animate-fade-in' style='animation-delay: 0.2s;'>", unsafe_allow_html=True)
+    st.markdown(componente_linha_fina(), unsafe_allow_html=True)
 
-            nome = st.text_input("Nome Completo", placeholder="Ex: Maria Silva")
-            municipio = st.selectbox("Município", MUNICIPIOS_LISTA, index=None, placeholder="Seleciona onde vives...")
-            telefone = st.text_input("Telemóvel", placeholder="9xx xxx xxx")
+    nome = st.text_input(
+        "NOME",
+        placeholder="Como queres que te chamemos?",
+        key="nome_cliente"
+    )
 
-            if st.button("Começar", use_container_width=True):
-                erros = []
-                if not nome or not nome.strip():
-                    erros.append("Por favor, insere o teu nome.")
-                if not municipio:
-                    erros.append("Seleciona um município.")
-                if not telefone or not validar_telefone(telefone):
-                    erros.append("Número de telefone inválido (deve ter 9 dígitos).")
+    municipio = st.selectbox(
+        "MUNICÍPIO",
+        MUNICIPIOS_LISTA,
+        index=None,
+        placeholder="Onde vives?",
+        key="municipio_cliente"
+    )
 
-                if erros:
-                    for erro in erros:
-                        st.error(erro)
-                else:
-                    sucesso, dados = registar_cliente(nome.strip(), telefone.strip(), municipio)
-                    if sucesso:
-                        st.session_state['ecra'] = 'cliente'
-                        st.session_state['cliente'] = dados
-                        st.rerun()
+    telefone = st.text_input(
+        "TELEFONE",
+        placeholder="9xx xxx xxx",
+        key="telefone_cliente"
+    )
 
-            st.markdown("</div>", unsafe_allow_html=True)
+    email = st.text_input(
+        "EMAIL (OPCIONAL)",
+        placeholder="exemplo@email.com",
+        key="email_cliente"
+    )
 
-        # Separador
-        st.markdown("<div style='margin: 40px 0; border-top: 1px solid #E2E8F0;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:1rem;'></div>", unsafe_allow_html=True)
 
-        # Área Profissional
-        st.markdown("""
-        <div class='center-content animate-fade-in' style='animation-delay: 0.3s;'>
-            <p style='color: #64748B; font-size: 0.9rem; margin-bottom: 12px;'>És profissional de saúde?</p>
+    if st.button("COMEÇAR →", key="btn_comecar", use_container_width=True):
+        erros = []
+        if not nome or not nome.strip():
+            erros.append("Precisamos do teu nome.")
+        if not municipio:
+            erros.append("Escolhe o município onde vives.")
+        if not telefone:
+            erros.append("O número de telefone é obrigatório.")
+        elif not validar_telefone(telefone):
+            erros.append("O número deve ter 9 dígitos e começar por 9.")
+        if email and email.strip() and not validar_email(email.strip()):
+            erros.append("O email não parece válido.")
+
+        if erros:
+            for erro in erros:
+                st.error(erro)
+        else:
+            sucesso, dados = registar_cliente(
+                nome.strip(), telefone.strip(),
+                municipio, email.strip() if email else ''
+            )
+            if sucesso:
+                st.session_state['ecra'] = 'cliente'
+                st.session_state['cliente'] = dados
+                st.rerun()
+
+    st.markdown("<div style='height:3rem;'></div>", unsafe_allow_html=True)
+    st.markdown(componente_linha(), unsafe_allow_html=True)
+
+    st.markdown('''
+    <div style="text-align:center;margin-bottom:1.2rem;">
+        <div style="color:#8A8A82;font-size:0.68rem;letter-spacing:0.14em;
+            text-transform:uppercase;font-weight:700;">
+            Acesso profissional
         </div>
-        """, unsafe_allow_html=True)
-
-        if st.button("Aceder ao Painel Profissional", key="btn_empresa", use_container_width=True):
-            st.session_state['ecra'] = 'login_empresa'
-            st.rerun()
-
-
-def tela_login_empresa():
-    st.markdown(CSS_GLOBAL, unsafe_allow_html=True)
+    </div>
+    ''', unsafe_allow_html=True)
 
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        st.markdown("<div style='height: 15vh;'></div>", unsafe_allow_html=True)
+        if st.button("ENTRAR COMO EMPRESA", key="btn_empresa", use_container_width=True):
+            st.session_state['ecra'] = 'login_empresa'
+            st.rerun()
 
-        st.markdown("""
-        <div style='text-align: center; margin-bottom: 40px;'>
-            <h2 style='font-size: 2rem; margin-bottom: 8px;'>Painel Profissional</h2>
-            <p style='color: #64748B;'>Acesso reservado a clínicas e hospitais parceiros.</p>
+    st.markdown(componente_footer(), unsafe_allow_html=True)
+
+
+def tela_login_empresa():
+    st.markdown(css_global(), unsafe_allow_html=True)
+    st.markdown(css_tela_inicio(), unsafe_allow_html=True)
+
+    st.markdown("<div style='height:8vh;'></div>", unsafe_allow_html=True)
+
+    st.markdown('''
+    <div style="text-align:center;margin-bottom:2.5rem;">
+        <div style="width:56px;height:56px;background:#15291C;border-radius:0;
+            display:inline-flex;align-items:center;justify-content:center;
+            margin-bottom:1.5rem;">
+            <svg width="28" height="28" viewBox="0 0 44 44" fill="none">
+                <circle cx="22" cy="22" r="16" stroke="#D4E7DC" stroke-width="2.5" fill="none"/>
+                <circle cx="22" cy="22" r="8" fill="#C9553A"/>
+                <line x1="22" y1="2" x2="22" y2="10" stroke="#D4E7DC" stroke-width="2" stroke-linecap="round"/>
+                <line x1="22" y1="34" x2="22" y2="42" stroke="#D4E7DC" stroke-width="2" stroke-linecap="round"/>
+                <line x1="2" y1="22" x2="10" y2="22" stroke="#D4E7DC" stroke-width="2" stroke-linecap="round"/>
+                <line x1="34" y1="22" x2="42" y2="22" stroke="#D4E7DC" stroke-width="2" stroke-linecap="round"/>
+            </svg>
         </div>
-        """, unsafe_allow_html=True)
+        <div style="font-size:1.6rem;font-weight:800;color:#1A1A18;
+            letter-spacing:-0.03em;">
+            Acesso Profissional
+        </div>
+        <div style="font-size:0.85rem;color:#8A8A82;margin-top:0.5rem;">
+            Para clínicas e hospitais parceiros
+        </div>
+    </div>
+    ''', unsafe_allow_html=True)
 
-        usuario = st.text_input("Utilizador", placeholder="nome@clinica.com")
-        senha = st.text_input("Palavra-passe", type="password")
+    st.markdown(componente_linha_fina(), unsafe_allow_html=True)
 
-        col_btn1, col_btn2 = st.columns(2)
-        with col_btn1:
-            if st.button("Voltar", use_container_width=True):
-                st.session_state['ecra'] = 'inicio'
+    usuario = st.text_input(
+        "UTILIZADOR",
+        placeholder="O teu utilizador",
+        key="emp_usuario"
+    )
+
+    senha = st.text_input(
+        "PALAVRA-PASSE",
+        type="password",
+        placeholder="A tua palavra-passe",
+        key="emp_senha"
+    )
+
+    st.markdown("<div style='height:1rem;'></div>", unsafe_allow_html=True)
+
+    if st.button("ENTRAR →", key="btn_entrar_empresa", use_container_width=True):
+        if not usuario or not senha:
+            st.error("Preenche os dois campos.")
+        else:
+            autenticado = False
+            try:
+                usuarios_validos = st.secrets["usuarios"]
+                if usuario.strip().lower() in usuarios_validos:
+                    if usuarios_validos[usuario.strip().lower()] == senha:
+                        autenticado = True
+            except Exception:
+                pass
+
+            if autenticado:
+                st.session_state['ecra'] = 'empresa'
+                st.session_state['empresa_usuario'] = usuario.strip()
                 st.rerun()
-        with col_btn2:
-            if st.button("Entrar", use_container_width=True):
-                if not usuario or not senha:
-                    st.error("Preenche todos os campos.")
-                else:
-                    # Simulação de autenticação
-                    try:
-                        usuarios_validos = st.secrets.get("usuarios", {"admin": "admin"})
-                        if usuario.strip().lower() in usuarios_validos and usuarios_validos[usuario.strip().lower()] == senha:
-                            st.session_state['ecra'] = 'empresa'
-                            st.session_state['empresa_usuario'] = usuario.strip()
-                            st.rerun()
-                        else:
-                            st.error("Credenciais inválidas.")
-                    except Exception:
-                        st.error("Erro no sistema de autenticação.")
+            else:
+                st.error("Credenciais incorrectas.")
+
+    st.markdown("<div style='height:1.5rem;'></div>", unsafe_allow_html=True)
+
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        if st.button("← VOLTAR", key="btn_voltar_login", use_container_width=True):
+            st.session_state['ecra'] = 'inicio'
+            st.rerun()
+
+    st.markdown('''
+    <div style="text-align:center;margin-top:3rem;color:#B5B3AD;
+        font-size:0.68rem;letter-spacing:0.12em;text-transform:uppercase;">
+        Acesso restrito a profissionais autorizados
+    </div>
+    ''', unsafe_allow_html=True)
 
 
 def tela_painel_cliente():
-    st.markdown(CSS_GLOBAL, unsafe_allow_html=True)
+    st.markdown(css_global(), unsafe_allow_html=True)
+    st.markdown(css_painel_cliente(), unsafe_allow_html=True)
 
     cliente = st.session_state.get('cliente', {})
     nome = cliente.get('nome', 'Amigo')
     municipio = cliente.get('municipio', 'Luanda')
     primeiro_nome = nome.split()[0] if nome else 'Amigo'
+    saudacao = obter_saudacao()
 
-    # Header
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        st.markdown(f"<h1 style='font-size: 1.8rem;'>Olá, {primeiro_nome}!</h1>", unsafe_allow_html=True)
-        st.markdown(f"<p style='color: #64748B; margin-top: -10px;'>📍 {municipio}</p>", unsafe_allow_html=True)
-    with col2:
-        if st.button("Sair", key="btn_sair"):
+    col_h1, col_h2 = st.columns([3, 1])
+    with col_h1:
+        st.markdown(componente_logo("pequeno"), unsafe_allow_html=True)
+
+    with col_h2:
+        st.markdown("<div style='height:0.3rem;'></div>", unsafe_allow_html=True)
+        if st.button("SAIR", key="btn_sair_cliente"):
             for k in ['ecra', 'cliente']:
                 if k in st.session_state:
                     del st.session_state[k]
             st.rerun()
 
-    st.markdown("---")
+    st.markdown(componente_linha(), unsafe_allow_html=True)
 
-    # Tabs
-    tab_clinicas, tab_alertas, tab_sobre = st.tabs(["🏥 Clínicas", "⚠️ Alertas", "ℹ️ Sobre"])
+    st.markdown(f'''
+    <div style="margin-bottom:0.5rem;">
+        <div style="font-size:2.2rem;font-weight:900;color:#1A1A18;
+            letter-spacing:-0.04em;line-height:1.1;">
+            {saudacao},<br>{primeiro_nome}.
+        </div>
+    </div>
+    ''', unsafe_allow_html=True)
+
+    st.markdown(componente_linha_fina(), unsafe_allow_html=True)
+
+    st.markdown(f'''
+    <div style="color:#8A8A82;font-size:0.88rem;margin-bottom:2rem;">
+        O que precisas hoje?
+    </div>
+    ''', unsafe_allow_html=True)
+
+    tab_clinicas, tab_alertas, tab_sobre = st.tabs([
+        "Clínicas",
+        "Alertas",
+        "Sobre"
+    ])
 
     with tab_clinicas:
         info_mun = MUNICIPIOS_INFO.get(municipio, {})
         hospital_ref = info_mun.get('hospital', 'Centro de Saúde')
 
-        st.markdown(f"""
-        <div class='osm-card' style='border-left: 4px solid #10B981;'>
-            <h4 style='margin: 0; font-size: 1rem; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em;'>Hospital de Referência</h4>
-            <h3 style='margin: 8px 0 4px 0; font-size: 1.4rem;'>{hospital_ref}</h3>
-            <p style='margin: 0; color: #64748B;'>{municipio} • {info_mun.get('provincia', 'Luanda')}</p>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(componente_label(f"Clínicas e hospitais · {municipio}"), unsafe_allow_html=True)
 
-        st.subheader("Outras Unidades de Saúde")
+        conteudo_ref = f'''
+        <div style="color:#8A8A82;font-size:0.65rem;text-transform:uppercase;
+            letter-spacing:0.12em;font-weight:700;margin-bottom:0.5rem;">
+            Hospital de referência
+        </div>
+        <div style="font-weight:800;color:#1A1A18;font-size:1.15rem;
+            letter-spacing:-0.02em;">
+            {hospital_ref}
+        </div>
+        <div style="color:#8A8A82;font-size:0.82rem;margin-top:0.35rem;">
+            {municipio} · {info_mun.get('provincia', 'Luanda')}
+        </div>'''
+        st.markdown(
+            componente_card(conteudo_ref, borda_esquerda="#1A1A18"),
+            unsafe_allow_html=True
+        )
+
+        st.markdown("<div style='height:1rem;'></div>", unsafe_allow_html=True)
 
         parceiros_lista = [
-            {'nome': 'Hospital Josina Machel', 'tipo': 'Público', 'local': 'Ingombota'},
-            {'nome': 'Clínica Sagrada Esperança', 'tipo': 'Privado', 'local': 'Talatona'},
-            {'nome': 'Hospital Geral de Viana', 'tipo': 'Público', 'local': 'Viana'},
+            {'nome': 'Hospital Josina Machel', 'tipo': 'Hospital Central',
+             'local': 'Ingombota', 'horario': '24 horas', 'publico': True},
+            {'nome': 'Hospital Américo Boavida', 'tipo': 'Hospital Central',
+             'local': 'Maianga', 'horario': '24 horas', 'publico': True},
+            {'nome': 'Hospital Pediátrico David Bernardino', 'tipo': 'Hospital Pediátrico',
+             'local': 'Maianga', 'horario': '24 horas', 'publico': True},
+            {'nome': 'Clínica Sagrada Esperança', 'tipo': 'Clínica Privada',
+             'local': 'Talatona', 'horario': '24 horas', 'publico': False},
+            {'nome': 'Clínica Multiperfil', 'tipo': 'Clínica Privada',
+             'local': 'Talatona', 'horario': '07h–20h', 'publico': False},
+            {'nome': 'Hospital Geral de Viana', 'tipo': 'Hospital Geral',
+             'local': 'Viana', 'horario': '24 horas', 'publico': True},
         ]
 
         for p in parceiros_lista:
-            st.markdown(f"""
-            <div class='osm-card' style='padding: 16px 24px;'>
-                <div style='display: flex; justify-content: space-between; align-items: center;'>
-                    <div>
-                        <strong style='font-size: 1.1rem;'>{p['nome']}</strong>
-                        <p style='margin: 4px 0 0 0; color: #64748B; font-size: 0.9rem;'>{p['local']}</p>
-                    </div>
-                    <span class='badge' style='background: {"#DBEAFE" if p["tipo"] == "Público" else "#FEF3C7"}; 
-                                                 color: {"#1E40AF" if p["tipo"] == "Público" else "#92400E"};'>
-                        {p['tipo']}
-                    </span>
+            badge_tipo = 'Público' if p['publico'] else 'Privado'
+            badge_html = componente_badge(
+                badge_tipo,
+                "sucesso" if p['publico'] else "alerta"
+            )
+
+            conteudo = f'''
+            <div style="display:flex;align-items:center;gap:1rem;">
+                <div style="width:42px;height:42px;background:#1A1A18;
+                    border-radius:0;display:flex;align-items:center;
+                    justify-content:center;color:white;font-weight:800;
+                    font-size:0.65rem;flex-shrink:0;letter-spacing:0.05em;">
+                    {p['nome'][:2].upper()}
                 </div>
-            </div>
-            """, unsafe_allow_html=True)
+                <div style="flex:1;">
+                    <div style="font-weight:700;color:#1A1A18;font-size:0.9rem;
+                        letter-spacing:-0.01em;">
+                        {p['nome']}
+                    </div>
+                    <div style="color:#8A8A82;font-size:0.78rem;margin-top:0.2rem;">
+                        {p['local']} · {p['horario']}
+                    </div>
+                </div>
+                <div>{badge_html}</div>
+            </div>'''
+            st.markdown(componente_card(conteudo), unsafe_allow_html=True)
 
     with tab_alertas:
+        info_mun = MUNICIPIOS_INFO.get(municipio, {})
         mes_actual = datetime.now().month
-        alertas_mes = {
-            1: "Época de chuvas. Cuidado com a cólera e a malária.",
-            2: "Chuvas fortes. Evita água parada perto de casa.",
-            3: "Pico de malária. Se tiveres febre, consulta.",
-            6: "Cacimbo. Agasalha-te bem.",
-        }
-        alerta_txt = alertas_mes.get(mes_actual, "Mantém-te hidratado e segue as normas de higiene.")
-
-        st.markdown(f"""
-        <div class='osm-card' style='background: #FFFBEB; border: 1px solid #FEF3C7;'>
-            <h4 style='margin: 0 0 8px 0; color: #92400E;'>⚠️ Alerta para {MESES[mes_actual-1]}</h4>
-            <p style='margin: 0; color: #78350F;'>{alerta_txt}</p>
-        </div>
-        """, unsafe_allow_html=True)
-
-        st.subheader("Dicas de Saúde")
-        dicas = [
-            ("💧", "Bebe água tratada ou fervida."),
-            ("🦟", "Dorme sempre debaixo da rede mosquiteira."),
-            ("💊", "Desparasita-te de 6 em 6 meses."),
+        nomes_meses = [
+            '', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+            'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
         ]
-        for icon, texto in dicas:
-            st.markdown(f"<div class='osm-card'>{icon} {texto}</div>", unsafe_allow_html=True)
+        mes_nome = nomes_meses[mes_actual]
+        risco_mun = info_mun.get('risco', 'Médio')
+
+        st.markdown(componente_label(f"Alertas de saúde · {mes_nome}"), unsafe_allow_html=True)
+
+        tipo_badge = {
+            'Baixo': 'sucesso', 'Médio': 'alerta',
+            'Alto': 'perigo', 'Muito Alto': 'critico'
+        }
+        badge_risco = componente_badge(risco_mun, tipo_badge.get(risco_mun, 'normal'))
+
+        conteudo_risco = f'''
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div>
+                <div style="color:#8A8A82;font-size:0.65rem;text-transform:uppercase;
+                    letter-spacing:0.12em;font-weight:700;">Risco na tua zona</div>
+                <div style="font-weight:800;color:#1A1A18;font-size:1.05rem;
+                    margin-top:0.4rem;letter-spacing:-0.02em;">{municipio}</div>
+            </div>
+            <div>{badge_risco}</div>
+        </div>'''
+        st.markdown(
+            componente_card(conteudo_risco, borda_esquerda="#1A1A18"),
+            unsafe_allow_html=True
+        )
+
+        alertas_mes = {
+            1: "Época de chuvas. Cuidado com a cólera e a malária. Bebe sempre água tratada.",
+            2: "Chuvas fortes. Evita água parada perto de casa. Dorme com rede mosquiteira.",
+            3: "Pico de malária. Se tiveres febre, vai ao centro de saúde mais próximo.",
+            4: "Ainda há muitos mosquitos. Usa repelente e rede mosquiteira.",
+            5: "As chuvas estão a acabar. Boa altura para desparasitar.",
+            6: "Cacimbo. Agasalha-te bem. Quem tem drepanocitose: cuidado com o frio.",
+            7: "Mês mais frio. Protege as crianças e os idosos.",
+            8: "Se tens tosse há mais de 2 semanas, faz exame no centro de saúde.",
+            9: "Boa altura para um check-up e desparasitação.",
+            10: "As chuvas voltam. Verifica a rede mosquiteira e trata a água.",
+            11: "Chuvas. Lembra-te da desparasitação.",
+            12: "Prepara-te para a época chuvosa."
+        }
+        alerta_txt = alertas_mes.get(mes_actual, "Cuida da tua saúde!")
+
+        st.markdown(f'''
+        <div style="background:#FFFFFF;border:2px solid #DDDCD7;
+            border-left:4px solid #C9553A;border-radius:0;
+            padding:1.4rem;margin:1.2rem 0;">
+            <div style="font-weight:800;color:#1A1A18;margin-bottom:0.5rem;
+                font-size:0.9rem;letter-spacing:-0.01em;">
+                Alerta para {mes_nome}
+            </div>
+            <div style="color:#5A5A52;font-size:0.88rem;line-height:1.8;">
+                {alerta_txt}
+            </div>
+        </div>
+        ''', unsafe_allow_html=True)
+
+        st.markdown(componente_label("Dicas para ti"), unsafe_allow_html=True)
+
+        dicas = [
+            ("Rede mosquiteira",
+             "Dorme sempre debaixo de uma rede mosquiteira, mesmo no cacimbo."),
+            ("Água tratada",
+             "Ferve ou trata a água antes de beber. Protege contra cólera e tifóide."),
+            ("Desparasitação",
+             "Toma Albendazol de 6 em 6 meses. Para adultos e crianças acima de 2 anos."),
+            ("Vacinas",
+             "Verifica se as vacinas das crianças estão em dia."),
+            ("Drepanocitose",
+             "Se há casos na família, faz o teste antes de ter filhos.")
+        ]
+
+        for titulo, texto in dicas:
+            conteudo = f'''
+            <div style="font-weight:700;color:#1A1A18;font-size:0.88rem;
+                letter-spacing:-0.01em;">
+                {titulo}
+            </div>
+            <div style="color:#8A8A82;font-size:0.82rem;margin-top:0.3rem;
+                line-height:1.7;">
+                {texto}
+            </div>'''
+            st.markdown(componente_card(conteudo), unsafe_allow_html=True)
 
     with tab_sobre:
-        st.markdown("""
-        <div class='osm-card' style='text-align: center; padding: 40px;'>
-            <div style='width: 60px; height: 60px; background: #0F172A; border-radius: 16px; 
-                        display: inline-flex; align-items: center; justify-content: center; 
-                        color: white; font-size: 1.5rem; font-weight: 800; margin-bottom: 20px;'>
-                HS
-            </div>
-            <h2>HemaSakula</h2>
-            <p style='color: #64748B; max-width: 400px; margin: 0 auto;'>
-                Plataforma angolana de apoio à decisão clínica e conexão entre pacientes e unidades de saúde.
-            </p>
+        st.markdown("<div style='height:1rem;'></div>", unsafe_allow_html=True)
+        st.markdown(componente_logo("grande"), unsafe_allow_html=True)
+
+        st.markdown(componente_linha_fina(), unsafe_allow_html=True)
+
+        conteudo_what = f'''
+        <div style="color:#8A8A82;font-size:0.65rem;text-transform:uppercase;
+            letter-spacing:0.12em;font-weight:700;margin-bottom:0.8rem;">
+            O que é?
         </div>
-        """, unsafe_allow_html=True)
+        <div style="color:#1A1A18;font-size:0.95rem;line-height:1.85;">
+            O HemaSakula é uma plataforma angolana que te ajuda a encontrar
+            clínicas e hospitais perto de ti. Além disso, as clínicas parceiras
+            usam o nosso sistema inteligente para analisar exames de sangue
+            e dar melhores diagnósticos.
+        </div>'''
+        st.markdown(componente_card(conteudo_what), unsafe_allow_html=True)
+
+        col_p1, col_p2 = st.columns(2)
+        with col_p1:
+            conteudo_paciente = f'''
+            <div style="color:#8A8A82;font-size:0.65rem;text-transform:uppercase;
+                letter-spacing:0.12em;font-weight:700;margin-bottom:0.8rem;">
+                Para ti
+            </div>
+            <div style="color:#5A5A52;font-size:0.88rem;line-height:1.85;">
+                Encontra clínicas perto da tua zona. Recebe alertas de saúde
+                para o teu município. Sabe quando desparasitar, vacinar,
+                fazer check-up.
+            </div>'''
+            st.markdown(
+                componente_card(conteudo_paciente, borda_esquerda="#1B6B3A"),
+                unsafe_allow_html=True
+            )
+
+        with col_p2:
+            conteudo_clinica = f'''
+            <div style="color:#8A8A82;font-size:0.65rem;text-transform:uppercase;
+                letter-spacing:0.12em;font-weight:700;margin-bottom:0.8rem;">
+                Para clínicas
+            </div>
+            <div style="color:#5A5A52;font-size:0.88rem;line-height:1.85;">
+                Apoio à decisão clínica com IA. Análise de hemogramas
+                inteligente. Dados epidemiológicos por município.
+            </div>'''
+            st.markdown(
+                componente_card(conteudo_clinica, borda_esquerda="#C9553A"),
+                unsafe_allow_html=True
+            )
+
+    st.markdown(componente_footer(), unsafe_allow_html=True)
 
 
 def tela_painel_empresa():
-    st.markdown(CSS_GLOBAL, unsafe_allow_html=True)
+    st.markdown(css_global(), unsafe_allow_html=True)
+    st.markdown(css_painel_empresa(), unsafe_allow_html=True)
 
-    usuario = st.session_state.get('empresa_usuario', 'Profissional')
+    usuario = st.session_state.get('empresa_usuario', 'Empresa')
 
-    # Header
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        st.title("Análise Clínica")
-        st.markdown("<p style='color: #64748B; margin-top: -10px;'>Sistema de Apoio à Decisão</p>", unsafe_allow_html=True)
-    with col2:
-        st.markdown(f"<p style='text-align: right; color: #94A3B8; font-size: 0.9rem;'>{usuario}<br>{datetime.now().strftime('%d/%m/%Y')}</p>", unsafe_allow_html=True)
-        if st.button("Sair", key="btn_sair_emp"):
-            del st.session_state['ecra']
-            del st.session_state['empresa_usuario']
-            st.rerun()
+    col_header1, col_header2 = st.columns([3, 1])
+    with col_header1:
+        st.markdown(componente_logo("pequeno"), unsafe_allow_html=True)
+    with col_header2:
+        st.markdown(f'''
+        <div style="text-align:right;padding-top:0.5rem;">
+            <span style="color:#8A8A82;font-size:0.75rem;font-weight:600;
+                letter-spacing:0.05em;">
+                {usuario.capitalize()} · {datetime.now().strftime("%d/%m/%Y")}
+            </span>
+        </div>
+        ''', unsafe_allow_html=True)
 
-    st.info("ℹ️ Este sistema é um auxiliar clínico. A decisão final é sempre do profissional de saúde.")
+    st.markdown(componente_linha(), unsafe_allow_html=True)
+
+    st.markdown(f'''
+    <div style="background:#FFFFFF;border:2px solid #DDDCD7;
+        border-left:4px solid #8A8A82;border-radius:0;
+        padding:1.2rem 1.4rem;margin-bottom:1.5rem;">
+        <div style="color:#5A5A52;font-size:0.88rem;line-height:1.7;">
+            <strong style="color:#1A1A18;">Atenção:</strong>
+            Este sistema serve de apoio à decisão clínica. Não substitui a
+            avaliação presencial nem o julgamento do profissional de saúde.
+        </div>
+    </div>
+    ''', unsafe_allow_html=True)
 
     modelo, encoders, features = carregar_modelo()
     if modelo is None:
-        st.error("❌ Modelo de IA não encontrado. Verifica a instalação.")
+        st.error("Modelo não encontrado. Executa primeiro: python modelo_ml.py")
         return
 
-    # Layout em Colunas
-    col_form, col_result = st.columns([1, 2])
+    st.markdown(f'''
+    <div style="background:#E8F5ED;border:2px solid #B8D8C4;
+        border-left:4px solid #1B6B3A;border-radius:0;
+        padding:1rem 1.4rem;margin-bottom:1.5rem;">
+        <span style="color:#1B6B3A;font-weight:700;font-size:0.82rem;
+            letter-spacing:0.05em;">
+            SISTEMA OPERACIONAL — MODELO CARREGADO
+        </span>
+    </div>
+    ''', unsafe_allow_html=True)
 
-    with col_form:
-        st.subheader("Dados do Paciente")
-
-        with st.expander("Identificação", expanded=True):
-            faixa_etaria = st.selectbox("Faixa Etária", FAIXAS_ETARIAS, index=5)
-            sexo = st.selectbox("Sexo", SEXOS)
-            gestante = False
-            if sexo == 'Feminino':
-                gestante = st.checkbox("Gestante")
-
-        with st.expander("Localização"):
-            municipio = st.selectbox("Município", list(MUNICIPIOS_INFO.keys()))
-            info_mun = MUNICIPIOS_INFO[municipio]
-            st.caption(f"Província: {info_mun['provincia']} | Risco: {info_mun['risco']}")
-            mes = st.selectbox("Mês", MESES, index=datetime.now().month - 1)
-            estacao = ESTACOES_POR_MES[mes]
-
-        with st.expander("Antecedentes"):
-            status_genetico = st.selectbox("Status Genético", STATUS_GENETICO)
-            mordedura = st.checkbox("Mordedura recente")
+    with st.sidebar:
+        st.markdown(f'''
+        <div style="text-align:center;padding:1.2rem 0 1.8rem 0;">
+            <div style="width:48px;height:48px;background:#1E3A28;border-radius:0;
+                display:inline-flex;align-items:center;justify-content:center;
+                margin-bottom:0.8rem;">
+                <svg width="24" height="24" viewBox="0 0 44 44" fill="none">
+                    <circle cx="22" cy="22" r="16" stroke="#D4E7DC" stroke-width="2.5" fill="none"/>
+                    <circle cx="22" cy="22" r="8" fill="#C9553A"/>
+                    <line x1="22" y1="2" x2="22" y2="10" stroke="#D4E7DC" stroke-width="2" stroke-linecap="round"/>
+                    <line x1="22" y1="34" x2="22" y2="42" stroke="#D4E7DC" stroke-width="2" stroke-linecap="round"/>
+                    <line x1="2" y1="22" x2="10" y2="22" stroke="#D4E7DC" stroke-width="2" stroke-linecap="round"/>
+                    <line x1="34" y1="22" x2="42" y2="22" stroke="#D4E7DC" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+            </div>
+            <div style="color:#E8E6E1;font-weight:700;font-size:0.9rem;">
+                {usuario.capitalize()}
+            </div>
+            <div style="color:#5A6B5E;font-size:0.62rem;margin-top:0.2rem;
+                letter-spacing:0.12em;text-transform:uppercase;font-weight:600;">
+                Conta Profissional
+            </div>
+        </div>
+        ''', unsafe_allow_html=True)
 
         st.markdown("---")
-        st.subheader("Hemograma")
+        st.header("Identificação")
+        faixa_etaria = st.selectbox("Faixa etária", FAIXAS_ETARIAS, index=5)
+        sexo = st.selectbox("Sexo biológico", SEXOS)
+        gestante = False
+        if sexo == 'Feminino' and ('Adulto' in faixa_etaria or 'Adolescente' in faixa_etaria):
+            gestante = st.checkbox("Grávida")
+        peso = st.number_input("Peso (kg)", 1.0, 200.0, 65.0, 0.5)
 
-        col_h1, col_h2 = st.columns(2)
-        with col_h1:
-            hemoglobina = st.number_input("Hemoglobina (g/dL)", 3.0, 22.0, 12.5, 0.1)
-            plaquetas = st.number_input("Plaquetas (/mm3)", 5000, 1000000, 250000, 1000)
-            leucocitos = st.number_input("Leucócitos (/mm3)", 500, 50000, 7500, 100)
-        with col_h2:
-            vcm = st.number_input("VCM (fL)", 50.0, 120.0, 88.0, 1.0)
-            rdw = st.number_input("RDW (%)", 10.0, 25.0, 13.5, 0.1)
-            reticulocitos = st.number_input("Reticulócitos (%)", 0.2, 15.0, 1.2, 0.1)
+        st.header("Localização")
+        municipio = st.selectbox("Município", list(MUNICIPIOS_INFO.keys()))
+        info_mun = MUNICIPIOS_INFO[municipio]
+        provincia = info_mun['provincia']
+        st.markdown(f"**Província:** {provincia}")
+        st.markdown(f"**Risco:** {info_mun['risco']}")
 
-        analisar = st.button("🚀 Analisar Dados", use_container_width=True, type="primary")
+        st.header("Colheita")
+        mes = st.selectbox("Mês", MESES, index=datetime.now().month - 1)
+        estacao = ESTACOES_POR_MES[mes]
+        st.markdown(f"**Estação:** {estacao}")
 
-    with col_result:
-        if analisar:
-            dados = {
-                'faixa_etaria': faixa_etaria, 'sexo': sexo, 'gestante': gestante,
-                'municipio': municipio, 'provincia': info_mun['provincia'],
-                'mes': mes, 'estacao': estacao, 'status_genetico': status_genetico,
-                'mordedura_recente': mordedura, 'hemoglobina': hemoglobina,
-                'plaquetas': plaquetas, 'leucocitos': leucocitos,
-                'vcm': vcm, 'rdw': rdw, 'reticulocitos': reticulocitos
+        st.header("Antecedentes")
+        status_genetico = st.selectbox("Hemoglobina (genética)", STATUS_GENETICO)
+        mordedura = st.checkbox("Mordedura animal recente")
+
+        st.markdown("---")
+        if st.button("SAIR", key="btn_sair_empresa", use_container_width=True):
+            for k in ['ecra', 'empresa_usuario']:
+                if k in st.session_state:
+                    del st.session_state[k]
+            st.rerun()
+
+    st.markdown(f'''
+    <div style="margin-bottom:0.3rem;">
+        <div style="font-size:1.6rem;font-weight:900;color:#1A1A18;
+            letter-spacing:-0.04em;">
+            Hemograma
+        </div>
+    </div>
+    ''', unsafe_allow_html=True)
+    st.markdown(componente_linha_fina(), unsafe_allow_html=True)
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.markdown(f'''
+        <div style="color:#C9553A;font-weight:800;font-size:0.7rem;
+            letter-spacing:0.14em;text-transform:uppercase;
+            padding-bottom:0.6rem;margin-bottom:1.2rem;
+            border-bottom:3px solid #C9553A;">
+            Série Vermelha
+        </div>
+        ''', unsafe_allow_html=True)
+        hemoglobina = st.number_input("Hemoglobina (g/dL)", 3.0, 22.0, 12.5, 0.1)
+        hematocrito = st.number_input("Hematócrito (%)", 10.0, 70.0, 38.0, 0.5)
+        hemacias = st.number_input("Eritrócitos (x10⁶/µL)", 2.0, 7.0, 4.5, 0.1)
+        vcm = st.number_input("VCM (fL)", 50.0, 120.0, 88.0, 1.0)
+        hcm = st.number_input("HCM (pg)", 15.0, 40.0, 29.0, 0.5)
+        chcm = st.number_input("CHCM (g/dL)", 28.0, 40.0, 33.5, 0.5)
+        rdw = st.number_input("RDW (%)", 10.0, 25.0, 13.5, 0.1)
+
+    with col2:
+        st.markdown(f'''
+        <div style="color:#1A1A18;font-weight:800;font-size:0.7rem;
+            letter-spacing:0.14em;text-transform:uppercase;
+            padding-bottom:0.6rem;margin-bottom:1.2rem;
+            border-bottom:3px solid #1A1A18;">
+            Série Branca
+        </div>
+        ''', unsafe_allow_html=True)
+        leucocitos = st.number_input("Leucócitos (/mm³)", 500, 50000, 7500, 100)
+        neutrofilos = st.number_input("Neutrófilos (%)", 10.0, 90.0, 58.0, 1.0)
+        linfocitos = st.number_input("Linfócitos (%)", 5.0, 70.0, 32.0, 1.0)
+        monocitos = st.number_input("Monócitos (%)", 0.0, 20.0, 6.0, 0.5)
+        eosinofilos = st.number_input("Eosinófilos (%)", 0.0, 25.0, 3.0, 0.5)
+        basofilos = st.number_input("Basófilos (%)", 0.0, 3.0, 0.5, 0.1)
+
+        valido, soma = validar_leucograma(
+            neutrofilos, linfocitos, monocitos, eosinofilos, basofilos
+        )
+        if not valido:
+            st.warning(
+                f"O diferencial soma {soma:.1f}% — o esperado é próximo de 100%."
+            )
+
+    with col3:
+        st.markdown(f'''
+        <div style="color:#15291C;font-weight:800;font-size:0.7rem;
+            letter-spacing:0.14em;text-transform:uppercase;
+            padding-bottom:0.6rem;margin-bottom:1.2rem;
+            border-bottom:3px solid #15291C;">
+            Plaquetas e Outros
+        </div>
+        ''', unsafe_allow_html=True)
+        plaquetas = st.number_input("Plaquetas (/mm³)", 5000, 1000000, 250000, 5000)
+        vpm = st.number_input("VPM (fL)", 5.0, 15.0, 9.5, 0.5)
+        reticulocitos = st.number_input("Reticulócitos (%)", 0.2, 15.0, 1.2, 0.1)
+
+    st.markdown(componente_linha(), unsafe_allow_html=True)
+
+    with st.form(key="form_analise"):
+        col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1])
+        with col_btn2:
+            submit = st.form_submit_button(
+                "ANALISAR HEMOGRAMA →", use_container_width=True
+            )
+
+    if submit:
+        dados = {
+            'faixa_etaria': faixa_etaria, 'sexo': sexo, 'gestante': gestante,
+            'peso_kg': peso, 'municipio': municipio, 'provincia': provincia,
+            'mes': mes, 'estacao': estacao, 'status_genetico': status_genetico,
+            'mordedura_recente': mordedura, 'hemoglobina': hemoglobina,
+            'hematocrito': hematocrito, 'hemacias': hemacias, 'vcm': vcm,
+            'hcm': hcm, 'chcm': chcm, 'rdw': rdw, 'leucocitos': leucocitos,
+            'neutrofilos': neutrofilos, 'linfocitos': linfocitos,
+            'monocitos': monocitos, 'eosinofilos': eosinofilos,
+            'basofilos': basofilos, 'plaquetas': plaquetas, 'vpm': vpm,
+            'reticulocitos': reticulocitos
+        }
+
+        gravidade, resultados, erro = processar_analise(
+            modelo, encoders, features, dados
+        )
+
+        if erro:
+            st.error(f"Erro no processamento: {erro}")
+            return
+
+        if not resultados:
+            st.error("Não consegui gerar resultados. Confere os dados.")
+            return
+
+        diag_principal = resultados[0][0]
+
+        st.markdown(f'''
+        <div style="margin-top:2.5rem;">
+            <div style="font-size:1.6rem;font-weight:900;color:#1A1A18;
+                letter-spacing:-0.04em;">
+                Resultados
+            </div>
+        </div>
+        ''', unsafe_allow_html=True)
+        st.markdown(componente_linha_fina(), unsafe_allow_html=True)
+
+        col_r1, col_r2 = st.columns(2)
+        with col_r1:
+            tipo_grav = {
+                "LEVE": "sucesso", "MODERADO": "alerta",
+                "GRAVE": "perigo", "CRITICO": "critico"
             }
+            badge_grav = componente_badge(gravidade, tipo_grav.get(gravidade, "normal"))
+            conteudo_grav = f'''
+            <div style="color:#8A8A82;font-size:0.65rem;text-transform:uppercase;
+                letter-spacing:0.12em;font-weight:700;">Gravidade</div>
+            <div style="margin-top:0.8rem;">{badge_grav}</div>'''
+            st.markdown(componente_card(conteudo_grav), unsafe_allow_html=True)
 
-            with st.spinner("A processar análise..."):
-                gravidade, resultados, erro = processar_analise(modelo, encoders, features, dados)
+        with col_r2:
+            conteudo_hosp = f'''
+            <div style="color:#8A8A82;font-size:0.65rem;text-transform:uppercase;
+                letter-spacing:0.12em;font-weight:700;">Referenciar para</div>
+            <div style="margin-top:0.8rem;font-weight:700;color:#1A1A18;
+                font-size:0.95rem;">{info_mun["hospital"]}</div>'''
+            st.markdown(componente_card(conteudo_hosp), unsafe_allow_html=True)
 
-            if erro:
-                st.error(f"Erro: {erro}")
+        st.markdown(componente_label("Hipóteses diagnósticas"), unsafe_allow_html=True)
+
+        for i, (diag, prob) in enumerate(resultados[:3]):
+            if i == 0:
+                conteudo = f'''
+                <div style="display:flex;justify-content:space-between;
+                    align-items:center;">
+                    <span style="font-size:1.1rem;font-weight:800;color:#1A1A18;
+                        letter-spacing:-0.02em;">
+                        01 — {diag}
+                    </span>
+                    <span style="background:#1A1A18;color:#FAFAF8;
+                        padding:0.45rem 1.1rem;border-radius:0;font-weight:800;
+                        font-size:0.82rem;letter-spacing:0.02em;">
+                        {prob:.1f}%
+                    </span>
+                </div>'''
+                st.markdown(
+                    componente_card(conteudo, borda_esquerda="#1A1A18"),
+                    unsafe_allow_html=True
+                )
+                st.progress(prob / 100)
             else:
-                diag_principal = resultados[0][0]
+                num = f"0{i+1}"
+                conteudo = f'''
+                <div style="display:flex;justify-content:space-between;
+                    align-items:center;">
+                    <span style="color:#5A5A52;font-weight:600;font-size:0.9rem;">
+                        {num} — {diag}
+                    </span>
+                    <span style="color:#8A8A82;font-weight:700;font-size:0.85rem;">
+                        {prob:.1f}%
+                    </span>
+                </div>'''
+                st.markdown(componente_card(conteudo), unsafe_allow_html=True)
 
-                # Cards de Resultado
-                c1, c2, c3 = st.columns(3)
-                with c1:
-                    classe_css = obter_classe_gravidade(gravidade)
-                    st.markdown(f"""
-                    <div class='osm-card' style='text-align: center; border-top: 4px solid {"#10B981" if gravidade == "LEVE" else "#F59E0B" if gravidade == "MODERADO" else "#EF4444"};'>
-                        <p style='color: #64748B; font-size: 0.8rem; margin: 0;'>GRAVIDADE</p>
-                        <span class='badge {classe_css}' style='font-size: 1rem; margin-top: 8px; display: inline-block;'>{gravidade}</span>
-                    </div>
-                    """, unsafe_allow_html=True)
-                with c2:
-                    st.markdown(f"""
-                    <div class='osm-card' style='text-align: center; border-top: 4px solid #3B82F6;'>
-                        <p style='color: #64748B; font-size: 0.8rem; margin: 0;'>DIAGNÓSTICO PRINCIPAL</p>
-                        <h3 style='margin: 8px 0 0 0; font-size: 1.2rem;'>{diag_principal}</h3>
-                    </div>
-                    """, unsafe_allow_html=True)
-                with c3:
-                    st.markdown(f"""
-                    <div class='osm-card' style='text-align: center; border-top: 4px solid #8B5CF6;'>
-                        <p style='color: #64748B; font-size: 0.8rem; margin: 0;'>CONFIANÇA</p>
-                        <h3 style='margin: 8px 0 0 0; font-size: 1.2rem;'>{resultados[0][1]:.1f}%</h3>
-                    </div>
-                    """, unsafe_allow_html=True)
+        st.markdown(componente_label("Conduta clínica"), unsafe_allow_html=True)
 
-                # Conduta
-                st.subheader("Conduta Recomendada")
-                if diag_principal in CONDUTAS:
-                    cond = CONDUTAS[diag_principal]
-                    if gravidade in ["GRAVE", "CRITICO"]:
-                        st.error(f"**Ação Imediata:** {cond['grave']}")
-                    else:
-                        st.success(f"**Conduta:** {cond['leve']}")
+        if diag_principal in CONDUTAS:
+            cond = CONDUTAS[diag_principal]
 
-                    with st.expander("Ver Sinais de Alarme"):
-                        for alerta in cond['alertas']:
-                            st.markdown(f"- {alerta}")
+            if gravidade in ["GRAVE", "CRITICO"]:
+                st.error(f"**Caso grave:** {cond['grave']}")
+            else:
+                st.info(f"**Conduta:** {cond['leve']}")
 
-                # Gráfico de Probabilidades
-                st.subheader("Distribuição de Probabilidades")
-                chart_data = pd.DataFrame(resultados[:3], columns=['Diagnóstico', 'Probabilidade'])
-                st.bar_chart(chart_data.set_index('Diagnóstico'))
+            conteudo_exame = f'''
+            <div style="color:#8A8A82;font-size:0.65rem;text-transform:uppercase;
+                letter-spacing:0.12em;font-weight:700;margin-bottom:0.5rem;">
+                Exame para confirmar
+            </div>
+            <div style="color:#1A1A18;font-weight:600;font-size:0.92rem;">
+                {cond["exame"]}
+            </div>'''
+            st.markdown(componente_card(conteudo_exame), unsafe_allow_html=True)
+
+            if cond['alertas']:
+                with st.expander("Sinais de alarme — referenciar já"):
+                    for a in cond['alertas']:
+                        st.markdown(f"· {a}")
+
+        st.markdown(componente_label("Interpretação do hemograma"), unsafe_allow_html=True)
+
+        col_l1, col_l2 = st.columns(2)
+        with col_l1:
+            _, hb_l = classificar_valor(hemoglobina, 11.5, 16.5)
+            st.metric("Hemoglobina", f"{hemoglobina} g/dL", hb_l)
+            _, plt_l = classificar_valor(plaquetas, 140000, 400000)
+            st.metric("Plaquetas", f"{formatar_numero(plaquetas)}/mm³", plt_l)
+            _, leu_l = classificar_valor(leucocitos, 4000, 10000)
+            st.metric("Leucócitos", f"{formatar_numero(leucocitos)}/mm³", leu_l)
+
+        with col_l2:
+            _, vcm_l = classificar_valor(vcm, 80, 98)
+            st.metric("VCM", f"{vcm} fL", vcm_l)
+            _, eos_l = classificar_valor(eosinofilos, 1, 5)
+            st.metric("Eosinófilos", f"{eosinofilos}%", eos_l)
+            _, ret_l = classificar_valor(reticulocitos, 0.5, 2.5)
+            st.metric("Reticulócitos", f"{reticulocitos}%", ret_l)
+
+        if status_genetico in ['Traço falciforme (AS)', 'Drepanocitose (SS)']:
+            st.warning(
+                f"**Hemoglobinopatia: {status_genetico}.** "
+                "Seguimento no IHL ou centro de drepanocitose. "
+                "Ácido fólico 5 mg/dia, beber muita água, "
+                "evitar frio e tudo que possa provocar crise."
+            )
+
+        if mordedura:
+            st.error(
+                "**Mordedura animal — risco rábico!** "
+                "Lavar a ferida com água e sabão durante 15 minutos. "
+                "Iniciar profilaxia anti-rábica sem esperar resultados. "
+                "Cada hora conta."
+            )
+
+    st.markdown(componente_footer(), unsafe_allow_html=True)
 
 
-# --- Ponto de Entrada ---
 def main():
     ecra = st.session_state.get('ecra', 'inicio')
 
