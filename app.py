@@ -16,6 +16,7 @@ st.set_page_config(
 )
 
 FICHEIRO_CLIENTES = 'dados_clientes.json'
+FICHEIRO_MENSAGENS = 'mensagens_chat.json'
 
 MUNICIPIOS_LISTA = [
     'Belas', 'Cacuaco', 'Catete', 'Cazenga', 'Icolo e Bengo',
@@ -37,6 +38,61 @@ MUNICIPIOS_INFO = {
     'Catete': {'provincia': 'Icolo e Bengo', 'risco': 'Alto', 'hospital': 'Hospital Municipal de Catete'},
     'Icolo e Bengo': {'provincia': 'Icolo e Bengo', 'risco': 'Alto', 'hospital': 'Centro de Saúde'}
 }
+
+# ─── Equipa do Consultório Médico Lucílio ───
+EQUIPA_LUCILIO = {
+    'dra_maria': {
+        'nome': 'Dra. Maria Lucílio',
+        'cargo': 'Directora Clínica · Medicina Geral',
+        'iniciais': 'ML',
+        'cor': '#1B6B3A',
+        'disponivel': True,
+        'bio': 'Mais de 15 anos a cuidar de famílias em Luanda. '
+               'Especialista em medicina preventiva e saúde comunitária.',
+        'horario': 'Seg–Sex · 08h–17h',
+    },
+    'dr_pedro': {
+        'nome': 'Dr. Pedro Nsimba',
+        'cargo': 'Médico · Clínica Geral e Pediatria',
+        'iniciais': 'PN',
+        'cor': '#15291C',
+        'disponivel': True,
+        'bio': 'Dedicado à saúde infantil. '
+               'Acompanha crianças desde o nascimento até à adolescência.',
+        'horario': 'Seg–Sex · 09h–18h',
+    },
+    'enf_teresa': {
+        'nome': 'Enf.ª Teresa Mbuende',
+        'cargo': 'Enfermeira-Chefe · Vacinação e Triagem',
+        'iniciais': 'TM',
+        'cor': '#C9553A',
+        'disponivel': True,
+        'bio': 'Responsável pela triagem e pelo programa de vacinação. '
+               'Sempre disponível para tirar dúvidas sobre vacinas.',
+        'horario': 'Seg–Sáb · 07h–14h',
+    },
+    'dr_joao': {
+        'nome': 'Dr. João Kamutali',
+        'cargo': 'Médico · Medicina Interna',
+        'iniciais': 'JK',
+        'cor': '#5A3E8B',
+        'disponivel': False,
+        'bio': 'Especialista em doenças crónicas e acompanhamento '
+               'de pacientes com drepanocitose e hipertensão.',
+        'horario': 'Ter–Sex · 10h–16h',
+    },
+    'sec_ana': {
+        'nome': 'Ana Cristina',
+        'cargo': 'Secretária · Marcação de Consultas',
+        'iniciais': 'AC',
+        'cor': '#8A6B3E',
+        'disponivel': True,
+        'bio': 'Trata de tudo o que é marcação, reagendamento '
+               'e informações gerais. Fala contigo com todo o carinho.',
+        'horario': 'Seg–Sex · 07h30–17h30',
+    },
+}
+
 
 FAIXAS_ETARIAS = [
     'Recém-nascido (0-28 dias)', 'Lactente (1-12 meses)',
@@ -258,6 +314,8 @@ CONDUTAS = {
 }
 
 
+# ─── Funções de persistência ───
+
 def carregar_clientes():
     if os.path.exists(FICHEIRO_CLIENTES):
         with open(FICHEIRO_CLIENTES, 'r', encoding='utf-8') as f:
@@ -291,6 +349,58 @@ def registar_cliente(nome, telefone, municipio, email=''):
     guardar_clientes(clientes)
     return True, cliente
 
+
+# ─── Funções de mensagens (chat persistente) ───
+
+def carregar_mensagens():
+    if os.path.exists(FICHEIRO_MENSAGENS):
+        with open(FICHEIRO_MENSAGENS, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    return {}
+
+def guardar_mensagens(dados):
+    with open(FICHEIRO_MENSAGENS, 'w', encoding='utf-8') as f:
+        json.dump(dados, f, ensure_ascii=False, indent=2)
+
+def obter_conversa(telefone_cliente, id_membro):
+    """Retorna a lista de mensagens entre um cliente e um membro."""
+    mensagens = carregar_mensagens()
+    chave = f"{telefone_cliente}___{id_membro}"
+    return mensagens.get(chave, [])
+
+def enviar_mensagem(telefone_cliente, id_membro, remetente, texto):
+    """
+    Guarda uma nova mensagem.
+    remetente: 'cliente' ou 'membro'
+    """
+    mensagens = carregar_mensagens()
+    chave = f"{telefone_cliente}___{id_membro}"
+    if chave not in mensagens:
+        mensagens[chave] = []
+    mensagens[chave].append({
+        'remetente': remetente,
+        'texto': texto,
+        'hora': datetime.now().strftime('%H:%M'),
+        'data': datetime.now().strftime('%d/%m/%Y'),
+        'timestamp': datetime.now().isoformat(),
+    })
+    guardar_mensagens(mensagens)
+
+def contar_mensagens_nao_lidas(telefone_cliente, id_membro, perspectiva='cliente'):
+    """Conta mensagens do outro lado que ainda não foram 'vistas'."""
+    conversa = obter_conversa(telefone_cliente, id_membro)
+    outro = 'membro' if perspectiva == 'cliente' else 'cliente'
+    cont = 0
+    for msg in reversed(conversa):
+        if msg['remetente'] == outro:
+            cont += 1
+        else:
+            break
+    return cont
+
+
+# ─── Validações ───
+
 def validar_email(email):
     if not email:
         return True
@@ -308,6 +418,9 @@ def obter_saudacao():
     elif hora < 18:
         return "Boa tarde"
     return "Boa noite"
+
+
+# ─── Modelo ML ───
 
 @st.cache_resource
 def carregar_modelo():
@@ -403,6 +516,10 @@ def processar_analise(modelo, encoders, features, dados_paciente):
     return gravidade, resultados, erro
 
 
+# ══════════════════════════════════════════════════════
+#  CSS
+# ══════════════════════════════════════════════════════
+
 def css_global():
     return """<style>
     @import url('https://fonts.googleapis.com/css2?family=Dosis:wght@200;300;400;500;600;700;800&display=swap');
@@ -425,11 +542,8 @@ def css_global():
         --radius: 0px;
     }
 
-    /* 2. Aplicação da fonte Dosis em todo o projeto */
     * { font-family: 'Dosis', sans-serif !important; }
-    
     .stApp { background: var(--bg) !important; }
-
     [data-testid="stSidebar"] { display: none !important; }
     header[data-testid="stHeader"] { display: none !important; }
     #MainMenu, footer, .stDeployButton { display: none !important; }
@@ -439,7 +553,7 @@ def css_global():
     .stNumberInput > label,
     .stCheckbox > label {
         color: var(--text) !important;
-        font-size: 0.75rem !important; /* Ajustei ligeiramente pois a Dosis é mais pequena */
+        font-size: 0.75rem !important;
         font-weight: 700 !important;
         letter-spacing: 0.14em !important;
         text-transform: uppercase !important;
@@ -452,7 +566,7 @@ def css_global():
         border-radius: var(--radius) !important;
         color: var(--text) !important;
         padding: 1rem 1.1rem !important;
-        font-size: 1rem !important; /* Dosis lê-se melhor um pouco maior */
+        font-size: 1rem !important;
         font-weight: 500 !important;
         transition: border-color 0.3s ease, box-shadow 0.3s ease !important;
         -webkit-appearance: none !important;
@@ -469,9 +583,7 @@ def css_global():
         font-weight: 400 !important;
     }
 
-    div[data-baseweb="select"] {
-        color: var(--text) !important;
-    }
+    div[data-baseweb="select"] { color: var(--text) !important; }
 
     div[data-baseweb="select"] > div {
         background: var(--surface) !important;
@@ -491,23 +603,11 @@ def css_global():
         box-shadow: none !important;
     }
 
-    div[data-baseweb="select"] * {
-        color: var(--text) !important;
-    }
-
+    div[data-baseweb="select"] * { color: var(--text) !important; }
     div[data-baseweb="select"] span {
         color: var(--text) !important;
         font-weight: 500 !important;
         font-size: 1rem !important;
-    }
-
-    div[data-baseweb="select"] [data-testid="stMarkdownContainer"],
-    div[data-baseweb="select"] div[class*="ValueContainer"] span,
-    div[data-baseweb="select"] div[class*="singleValue"],
-    div[data-baseweb="select"] div[class*="SingleValue"],
-    div[data-baseweb="select"] div[class*="placeholder"],
-    div[data-baseweb="select"] input {
-        color: var(--text) !important;
     }
 
     div[data-baseweb="select"] div[class*="placeholder"] {
@@ -543,31 +643,16 @@ def css_global():
 
     div[data-baseweb="popover"] li:hover {
         background: var(--surface-alt) !important;
-        color: var(--text) !important;
     }
 
-    div[data-baseweb="popover"] li[aria-selected="true"],
-    div[data-baseweb="select"] [aria-selected="true"] {
+    div[data-baseweb="popover"] li[aria-selected="true"] {
         color: var(--text) !important;
         background: var(--sec) !important;
         font-weight: 700 !important;
     }
 
-    .stSelectbox [data-baseweb="select"] > div {
-        color: var(--text) !important;
-    }
-
-    .stSelectbox [data-baseweb="select"] > div > div {
-        color: var(--text) !important;
-    }
-
-    .stSelectbox [data-baseweb="select"] > div > div > div {
-        color: var(--text) !important;
-    }
-
     *:focus { outline: none !important; }
     input:focus, select:focus, textarea:focus { outline: none !important; }
-    input:invalid, input:required { border-color: var(--border) !important; box-shadow: none !important; }
 
     .stButton > button {
         background: transparent !important;
@@ -588,15 +673,12 @@ def css_global():
         background: var(--pri) !important;
         color: var(--bg) !important;
         border-color: var(--pri) !important;
-        transform: none !important;
-        box-shadow: none !important;
     }
 
     .stButton > button:active {
         background: #0D1E13 !important;
         border-color: #0D1E13 !important;
         color: var(--bg) !important;
-        transform: none !important;
     }
 
     .stFormSubmitButton > button {
@@ -646,9 +728,7 @@ def css_global():
         margin-bottom: -2px !important;
     }
 
-    .stTabs [data-baseweb="tab"]:hover {
-        color: var(--text) !important;
-    }
+    .stTabs [data-baseweb="tab"]:hover { color: var(--text) !important; }
 
     .stTabs [aria-selected="true"] {
         background: transparent !important;
@@ -658,13 +738,8 @@ def css_global():
         box-shadow: none !important;
     }
 
-    .stTabs [data-baseweb="tab-highlight"] {
-        display: none !important;
-    }
-
-    .stTabs [data-baseweb="tab-border"] {
-        display: none !important;
-    }
+    .stTabs [data-baseweb="tab-highlight"],
+    .stTabs [data-baseweb="tab-border"] { display: none !important; }
 
     [data-testid="stMetric"] {
         background: var(--surface);
@@ -745,6 +820,7 @@ def css_global():
 
     </style>"""
 
+
 def css_tela_inicio():
     return """<style>
     .main .block-container {
@@ -774,7 +850,6 @@ def css_painel_empresa():
         padding: 2rem 3rem;
     }
 
-    
     [data-testid="stSidebar"] {
         display: block !important;
         background-color: var(--pri) !important;
@@ -785,21 +860,18 @@ def css_painel_empresa():
         display: block !important;
         background: transparent !important;
     }
-    
-    div[data-testid="stDecoration"] {
-        display: none !important;
-    }
+
+    div[data-testid="stDecoration"] { display: none !important; }
 
     button[data-testid="baseButton-header"] {
         color: #1A1A18 !important;
     }
 
-
     [data-testid="stSidebar"] h1,
     [data-testid="stSidebar"] h2,
     [data-testid="stSidebar"] h3 {
         color: #E8E6E1 !important;
-        font-family: 'Dosis', sans-serif !important; /* Fonte Dosis */
+        font-family: 'Dosis', sans-serif !important;
         font-size: 0.85rem !important;
         font-weight: 700 !important;
         letter-spacing: 0.14em !important;
@@ -822,9 +894,7 @@ def css_painel_empresa():
         font-family: 'Dosis', sans-serif !important;
     }
 
-    [data-testid="stSidebar"] strong {
-        color: #B5C4B8 !important;
-    }
+    [data-testid="stSidebar"] strong { color: #B5C4B8 !important; }
 
     [data-testid="stSidebar"] .stSelectbox > div > div,
     [data-testid="stSidebar"] div[data-baseweb="select"] > div {
@@ -875,16 +945,19 @@ def css_painel_empresa():
         color: #FFFFFF !important;
     }
 
-    [data-testid="stSidebar"] hr {
-        border-color: #2A4435 !important;
-    }
-    
+    [data-testid="stSidebar"] hr { border-color: #2A4435 !important; }
+
     button[kind="header"] {
         background: transparent !important;
         border: none !important;
         color: #E8E6E1 !important;
     }
     </style>"""
+
+
+# ══════════════════════════════════════════════════════
+#  Componentes visuais reutilizáveis
+# ══════════════════════════════════════════════════════
 
 def componente_logo(tamanho="grande"):
     if tamanho == "grande":
@@ -986,6 +1059,10 @@ def componente_footer():
     </div>'''
 
 
+# ══════════════════════════════════════════════════════
+#  TELAS
+# ══════════════════════════════════════════════════════
+
 def tela_boas_vindas():
     st.markdown(css_global(), unsafe_allow_html=True)
     st.markdown(css_tela_inicio(), unsafe_allow_html=True)
@@ -993,9 +1070,7 @@ def tela_boas_vindas():
     saudacao = obter_saudacao()
 
     st.markdown("<div style='height:6vh;'></div>", unsafe_allow_html=True)
-
     st.markdown(componente_logo("grande"), unsafe_allow_html=True)
-
     st.markdown(componente_linha(), unsafe_allow_html=True)
 
     st.markdown(f'''
@@ -1006,8 +1081,9 @@ def tela_boas_vindas():
         </div>
         <div style="font-size:0.95rem;color:#8A8A82;line-height:1.8;
             max-width:360px;margin:0 auto;">
-            Encontra clínicas e hospitais perto de ti.
-            Cuida da tua saúde com quem te entende.
+            Fala directamente com a equipa do
+            Consultório Médico Lucílio.
+            Marca consultas, tira dúvidas, cuida de ti.
         </div>
     </div>
     ''', unsafe_allow_html=True)
@@ -1172,30 +1248,43 @@ def tela_login_empresa():
     ''', unsafe_allow_html=True)
 
 
+# ══════════════════════════════════════════════════════
+#  PAINEL DO CLIENTE — CHAT COM EQUIPA LUCÍLIO
+# ══════════════════════════════════════════════════════
+
 def tela_painel_cliente():
     st.markdown(css_global(), unsafe_allow_html=True)
     st.markdown(css_painel_cliente(), unsafe_allow_html=True)
 
     cliente = st.session_state.get('cliente', {})
     nome = cliente.get('nome', 'Amigo')
+    telefone = cliente.get('telefone', '')
     municipio = cliente.get('municipio', 'Luanda')
     primeiro_nome = nome.split()[0] if nome else 'Amigo'
     saudacao = obter_saudacao()
 
+    # ─── Cabeçalho ───
     col_h1, col_h2 = st.columns([3, 1])
     with col_h1:
         st.markdown(componente_logo("pequeno"), unsafe_allow_html=True)
-
     with col_h2:
         st.markdown("<div style='height:0.3rem;'></div>", unsafe_allow_html=True)
         if st.button("SAIR", key="btn_sair_cliente"):
-            for k in ['ecra', 'cliente']:
+            for k in ['ecra', 'cliente', 'chat_membro_activo']:
                 if k in st.session_state:
                     del st.session_state[k]
             st.rerun()
 
     st.markdown(componente_linha(), unsafe_allow_html=True)
 
+    # ─── Se está dentro de uma conversa ───
+    membro_activo = st.session_state.get('chat_membro_activo', None)
+
+    if membro_activo and membro_activo in EQUIPA_LUCILIO:
+        _renderizar_conversa(telefone, membro_activo, primeiro_nome)
+        return
+
+    # ─── Ecrã principal: saudação + lista da equipa ───
     st.markdown(f'''
     <div style="margin-bottom:0.5rem;">
         <div style="font-size:2.2rem;font-weight:900;color:#1A1A18;
@@ -1207,229 +1296,542 @@ def tela_painel_cliente():
 
     st.markdown(componente_linha_fina(), unsafe_allow_html=True)
 
+    # ─── Card do Consultório ───
+    st.markdown(componente_card(f'''
+    <div style="display:flex;align-items:center;gap:1rem;">
+        <div style="width:52px;height:52px;background:#15291C;
+            border-radius:0;display:flex;align-items:center;
+            justify-content:center;flex-shrink:0;">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none"
+                stroke="#D4E7DC" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                <polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+        </div>
+        <div style="flex:1;">
+            <div style="font-weight:800;color:#1A1A18;font-size:1.1rem;
+                letter-spacing:-0.02em;">
+                Consultório Médico Lucílio
+            </div>
+            <div style="color:#8A8A82;font-size:0.82rem;margin-top:0.2rem;">
+                Luanda · Seg–Sáb · 07h30–18h
+            </div>
+        </div>
+        <div>{componente_badge("Aberto", "sucesso")}</div>
+    </div>
+    ''', borda_esquerda="#15291C"), unsafe_allow_html=True)
+
+    st.markdown("<div style='height:0.8rem;'></div>", unsafe_allow_html=True)
+
     st.markdown(f'''
-    <div style="color:#8A8A82;font-size:0.88rem;margin-bottom:2rem;">
-        O que precisas hoje?
+    <div style="color:#5A5A52;font-size:0.9rem;line-height:1.8;
+        margin-bottom:1.5rem;">
+        Escolhe com quem queres falar. Podes marcar consulta,
+        tirar dúvidas sobre exames, pedir informações ou simplesmente
+        conversar sobre a tua saúde. Estamos aqui por ti.
     </div>
     ''', unsafe_allow_html=True)
 
-    tab_clinicas, tab_alertas, tab_sobre = st.tabs([
-        "Clínicas",
-        "Alertas",
-        "Sobre"
-    ])
+    st.markdown(componente_label("Equipa disponível"), unsafe_allow_html=True)
 
-    with tab_clinicas:
-        info_mun = MUNICIPIOS_INFO.get(municipio, {})
-        hospital_ref = info_mun.get('hospital', 'Centro de Saúde')
+    # ─── Lista de membros ───
+    for id_membro, membro in EQUIPA_LUCILIO.items():
+        n_nao_lidas = contar_mensagens_nao_lidas(telefone, id_membro, 'cliente')
 
-        st.markdown(componente_label(f"Clínicas e hospitais · {municipio}"), unsafe_allow_html=True)
-
-        conteudo_ref = f'''
-        <div style="color:#8A8A82;font-size:0.65rem;text-transform:uppercase;
-            letter-spacing:0.12em;font-weight:700;margin-bottom:0.5rem;">
-            Hospital de referência
-        </div>
-        <div style="font-weight:800;color:#1A1A18;font-size:1.15rem;
-            letter-spacing:-0.02em;">
-            {hospital_ref}
-        </div>
-        <div style="color:#8A8A82;font-size:0.82rem;margin-top:0.35rem;">
-            {municipio} · {info_mun.get('provincia', 'Luanda')}
-        </div>'''
-        st.markdown(
-            componente_card(conteudo_ref, borda_esquerda="#1A1A18"),
-            unsafe_allow_html=True
+        badge_status = componente_badge(
+            "Disponível", "sucesso"
+        ) if membro['disponivel'] else componente_badge(
+            "Indisponível", "normal"
         )
 
-        st.markdown("<div style='height:1rem;'></div>", unsafe_allow_html=True)
-
-        parceiros_lista = [
-            {'nome': 'Hospital Josina Machel', 'tipo': 'Hospital Central',
-             'local': 'Ingombota', 'horario': '24 horas', 'publico': True},
-            {'nome': 'Hospital Américo Boavida', 'tipo': 'Hospital Central',
-             'local': 'Maianga', 'horario': '24 horas', 'publico': True},
-            {'nome': 'Hospital Pediátrico David Bernardino', 'tipo': 'Hospital Pediátrico',
-             'local': 'Maianga', 'horario': '24 horas', 'publico': True},
-            {'nome': 'Clínica Sagrada Esperança', 'tipo': 'Clínica Privada',
-             'local': 'Talatona', 'horario': '24 horas', 'publico': False},
-            {'nome': 'Clínica Multiperfil', 'tipo': 'Clínica Privada',
-             'local': 'Talatona', 'horario': '07h–20h', 'publico': False},
-            {'nome': 'Hospital Geral de Viana', 'tipo': 'Hospital Geral',
-             'local': 'Viana', 'horario': '24 horas', 'publico': True},
-        ]
-
-        for p in parceiros_lista:
-            badge_tipo = 'Público' if p['publico'] else 'Privado'
-            badge_html = componente_badge(
-                badge_tipo,
-                "sucesso" if p['publico'] else "alerta"
-            )
-
-            conteudo = f'''
-            <div style="display:flex;align-items:center;gap:1rem;">
-                <div style="width:42px;height:42px;background:#1A1A18;
-                    border-radius:0;display:flex;align-items:center;
-                    justify-content:center;color:white;font-weight:800;
-                    font-size:0.65rem;flex-shrink:0;letter-spacing:0.05em;">
-                    {p['nome'][:2].upper()}
-                </div>
-                <div style="flex:1;">
-                    <div style="font-weight:700;color:#1A1A18;font-size:0.9rem;
-                        letter-spacing:-0.01em;">
-                        {p['nome']}
-                    </div>
-                    <div style="color:#8A8A82;font-size:0.78rem;margin-top:0.2rem;">
-                        {p['local']} · {p['horario']}
-                    </div>
-                </div>
-                <div>{badge_html}</div>
+        notif_html = ""
+        if n_nao_lidas > 0:
+            notif_html = f'''
+            <div style="background:#C9553A;color:#FFFFFF;width:22px;height:22px;
+                border-radius:50%;display:flex;align-items:center;
+                justify-content:center;font-size:0.65rem;font-weight:800;
+                flex-shrink:0;">
+                {n_nao_lidas}
             </div>'''
-            st.markdown(componente_card(conteudo), unsafe_allow_html=True)
 
-    with tab_alertas:
-        info_mun = MUNICIPIOS_INFO.get(municipio, {})
-        mes_actual = datetime.now().month
-        nomes_meses = [
-            '', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-            'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
-        ]
-        mes_nome = nomes_meses[mes_actual]
-        risco_mun = info_mun.get('risco', 'Médio')
-
-        st.markdown(componente_label(f"Alertas de saúde · {mes_nome}"), unsafe_allow_html=True)
-
-        tipo_badge = {
-            'Baixo': 'sucesso', 'Médio': 'alerta',
-            'Alto': 'perigo', 'Muito Alto': 'critico'
-        }
-        badge_risco = componente_badge(risco_mun, tipo_badge.get(risco_mun, 'normal'))
-
-        conteudo_risco = f'''
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-            <div>
-                <div style="color:#8A8A82;font-size:0.65rem;text-transform:uppercase;
-                    letter-spacing:0.12em;font-weight:700;">Risco na tua zona</div>
-                <div style="font-weight:800;color:#1A1A18;font-size:1.05rem;
-                    margin-top:0.4rem;letter-spacing:-0.02em;">{municipio}</div>
+        conteudo = f'''
+        <div style="display:flex;align-items:center;gap:1rem;">
+            <div style="width:46px;height:46px;background:{membro['cor']};
+                border-radius:0;display:flex;align-items:center;
+                justify-content:center;color:white;font-weight:800;
+                font-size:0.72rem;flex-shrink:0;letter-spacing:0.05em;">
+                {membro['iniciais']}
             </div>
-            <div>{badge_risco}</div>
+            <div style="flex:1;min-width:0;">
+                <div style="font-weight:700;color:#1A1A18;font-size:0.92rem;
+                    letter-spacing:-0.01em;">
+                    {membro['nome']}
+                </div>
+                <div style="color:#8A8A82;font-size:0.75rem;margin-top:0.15rem;">
+                    {membro['cargo']}
+                </div>
+                <div style="color:#B5B3AD;font-size:0.7rem;margin-top:0.1rem;">
+                    {membro['horario']}
+                </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:0.5rem;">
+                {notif_html}
+                {badge_status}
+            </div>
         </div>'''
-        st.markdown(
-            componente_card(conteudo_risco, borda_esquerda="#1A1A18"),
-            unsafe_allow_html=True
-        )
+        st.markdown(componente_card(conteudo), unsafe_allow_html=True)
 
-        alertas_mes = {
-            1: "Época de chuvas. Cuidado com a cólera e a malária. Bebe sempre água tratada.",
-            2: "Chuvas fortes. Evita água parada perto de casa. Dorme com rede mosquiteira.",
-            3: "Pico de malária. Se tiveres febre, vai ao centro de saúde mais próximo.",
-            4: "Ainda há muitos mosquitos. Usa repelente e rede mosquiteira.",
-            5: "As chuvas estão a acabar. Boa altura para desparasitar.",
-            6: "Cacimbo. Agasalha-te bem. Quem tem drepanocitose: cuidado com o frio.",
-            7: "Mês mais frio. Protege as crianças e os idosos.",
-            8: "Se tens tosse há mais de 2 semanas, faz exame no centro de saúde.",
-            9: "Boa altura para um check-up e desparasitação.",
-            10: "As chuvas voltam. Verifica a rede mosquiteira e trata a água.",
-            11: "Chuvas. Lembra-te da desparasitação.",
-            12: "Prepara-te para a época chuvosa."
-        }
-        alerta_txt = alertas_mes.get(mes_actual, "Cuida da tua saúde!")
+        if membro['disponivel']:
+            if st.button(
+                f"CONVERSAR COM {membro['nome'].upper().split('.')[-1].strip().split(' ')[0]}",
+                key=f"btn_chat_{id_membro}",
+                use_container_width=True
+            ):
+                st.session_state['chat_membro_activo'] = id_membro
+                st.rerun()
+        else:
+            st.markdown(f'''
+            <div style="text-align:center;color:#B5B3AD;font-size:0.75rem;
+                padding:0.5rem 0 0.8rem 0;font-weight:600;
+                letter-spacing:0.08em;">
+                Indisponível de momento — tenta mais tarde
+            </div>
+            ''', unsafe_allow_html=True)
 
+    st.markdown(componente_linha(), unsafe_allow_html=True)
+
+    # ─── Informação rápida ───
+    st.markdown(componente_label("Informação rápida"), unsafe_allow_html=True)
+
+    st.markdown(componente_card(f'''
+    <div style="color:#8A8A82;font-size:0.65rem;text-transform:uppercase;
+        letter-spacing:0.12em;font-weight:700;margin-bottom:0.5rem;">
+        Morada
+    </div>
+    <div style="color:#1A1A18;font-size:0.92rem;line-height:1.7;">
+        Consultório Médico Lucílio<br>
+        Luanda, Angola<br>
+        <span style="color:#8A8A82;">Tel: +244 923 000 000</span>
+    </div>
+    '''), unsafe_allow_html=True)
+
+    st.markdown(componente_card(f'''
+    <div style="color:#8A8A82;font-size:0.65rem;text-transform:uppercase;
+        letter-spacing:0.12em;font-weight:700;margin-bottom:0.5rem;">
+        Serviços
+    </div>
+    <div style="color:#5A5A52;font-size:0.88rem;line-height:1.8;">
+        Consultas de clínica geral · Pediatria · Vacinação ·
+        Medicina interna · Exames laboratoriais · Check-ups ·
+        Acompanhamento de doenças crónicas
+    </div>
+    '''), unsafe_allow_html=True)
+
+    st.markdown(componente_footer(), unsafe_allow_html=True)
+
+
+def _renderizar_conversa(telefone, id_membro, primeiro_nome):
+    """Renderiza o ecrã de conversa com um membro específico."""
+    membro = EQUIPA_LUCILIO[id_membro]
+    conversa = obter_conversa(telefone, id_membro)
+
+    # ─── Cabeçalho da conversa ───
+    if st.button("← VOLTAR", key="btn_voltar_chat"):
+        del st.session_state['chat_membro_activo']
+        st.rerun()
+
+    st.markdown(f'''
+    <div style="display:flex;align-items:center;gap:1rem;
+        padding:1rem 0;margin-bottom:0.5rem;">
+        <div style="width:50px;height:50px;background:{membro['cor']};
+            border-radius:0;display:flex;align-items:center;
+            justify-content:center;color:white;font-weight:800;
+            font-size:0.75rem;flex-shrink:0;letter-spacing:0.05em;">
+            {membro['iniciais']}
+        </div>
+        <div style="flex:1;">
+            <div style="font-weight:800;color:#1A1A18;font-size:1.1rem;
+                letter-spacing:-0.02em;">
+                {membro['nome']}
+            </div>
+            <div style="color:#8A8A82;font-size:0.78rem;margin-top:0.15rem;">
+                {membro['cargo']}
+            </div>
+        </div>
+        <div>{componente_badge("Online", "sucesso") if membro['disponivel'] else componente_badge("Offline", "normal")}</div>
+    </div>
+    ''', unsafe_allow_html=True)
+
+    st.markdown(componente_linha(), unsafe_allow_html=True)
+
+    # ─── Bio do membro ───
+    if not conversa:
         st.markdown(f'''
-        <div style="background:#FFFFFF;border:2px solid #DDDCD7;
-            border-left:4px solid #C9553A;border-radius:0;
-            padding:1.4rem;margin:1.2rem 0;">
-            <div style="font-weight:800;color:#1A1A18;margin-bottom:0.5rem;
-                font-size:0.9rem;letter-spacing:-0.01em;">
-                Alerta para {mes_nome}
+        <div style="background:#F3F2EE;border:2px solid #DDDCD7;
+            border-radius:0;padding:1.3rem;margin-bottom:1.5rem;">
+            <div style="color:#8A8A82;font-size:0.65rem;text-transform:uppercase;
+                letter-spacing:0.12em;font-weight:700;margin-bottom:0.5rem;">
+                Sobre
             </div>
             <div style="color:#5A5A52;font-size:0.88rem;line-height:1.8;">
-                {alerta_txt}
+                {membro['bio']}
+            </div>
+            <div style="color:#B5B3AD;font-size:0.78rem;margin-top:0.8rem;">
+                Escreve a tua primeira mensagem. Estamos aqui para te ajudar.
             </div>
         </div>
         ''', unsafe_allow_html=True)
 
-        st.markdown(componente_label("Dicas para ti"), unsafe_allow_html=True)
+    # ─── Mensagens ───
+    if conversa:
+        data_anterior = None
+        for msg in conversa:
+            # Separador de data
+            if msg.get('data') != data_anterior:
+                data_anterior = msg.get('data', '')
+                st.markdown(f'''
+                <div style="text-align:center;margin:1.2rem 0;">
+                    <span style="background:#F3F2EE;color:#B5B3AD;
+                        font-size:0.65rem;font-weight:700;
+                        letter-spacing:0.1em;text-transform:uppercase;
+                        padding:0.3rem 1rem;border:1px solid #DDDCD7;">
+                        {data_anterior}
+                    </span>
+                </div>
+                ''', unsafe_allow_html=True)
 
-        dicas = [
-            ("Rede mosquiteira",
-             "Dorme sempre debaixo de uma rede mosquiteira, mesmo no cacimbo."),
-            ("Água tratada",
-             "Ferve ou trata a água antes de beber. Protege contra cólera e tifóide."),
-            ("Desparasitação",
-             "Toma Albendazol de 6 em 6 meses. Para adultos e crianças acima de 2 anos."),
-            ("Vacinas",
-             "Verifica se as vacinas das crianças estão em dia."),
-            ("Drepanocitose",
-             "Se há casos na família, faz o teste antes de ter filhos.")
+            if msg['remetente'] == 'cliente':
+                # Mensagem do cliente (direita)
+                st.markdown(f'''
+                <div style="display:flex;justify-content:flex-end;
+                    margin-bottom:0.6rem;">
+                    <div style="background:#15291C;color:#E8E6E1;
+                        padding:0.9rem 1.2rem;max-width:75%;
+                        border-radius:0;">
+                        <div style="font-size:0.9rem;line-height:1.7;
+                            font-weight:500;">
+                            {msg['texto']}
+                        </div>
+                        <div style="text-align:right;color:#5A6B5E;
+                            font-size:0.65rem;margin-top:0.4rem;
+                            font-weight:600;">
+                            {msg['hora']}
+                        </div>
+                    </div>
+                </div>
+                ''', unsafe_allow_html=True)
+            else:
+                # Mensagem do membro (esquerda)
+                st.markdown(f'''
+                <div style="display:flex;justify-content:flex-start;
+                    margin-bottom:0.6rem;gap:0.5rem;">
+                    <div style="width:28px;height:28px;
+                        background:{membro['cor']};border-radius:0;
+                        display:flex;align-items:center;
+                        justify-content:center;color:white;
+                        font-weight:800;font-size:0.55rem;
+                        flex-shrink:0;margin-top:0.2rem;">
+                        {membro['iniciais']}
+                    </div>
+                    <div style="background:#FFFFFF;color:#1A1A18;
+                        padding:0.9rem 1.2rem;max-width:75%;
+                        border:2px solid #DDDCD7;border-radius:0;">
+                        <div style="font-size:0.9rem;line-height:1.7;
+                            font-weight:500;">
+                            {msg['texto']}
+                        </div>
+                        <div style="color:#B5B3AD;font-size:0.65rem;
+                            margin-top:0.4rem;font-weight:600;">
+                            {msg['hora']}
+                        </div>
+                    </div>
+                </div>
+                ''', unsafe_allow_html=True)
+
+    st.markdown("<div style='height:1rem;'></div>", unsafe_allow_html=True)
+
+    # ─── Campo de envio ───
+    with st.form(key=f"form_msg_{id_membro}", clear_on_submit=True):
+        st.markdown(componente_label("Escreve a tua mensagem"), unsafe_allow_html=True)
+
+        texto_msg = st.text_input(
+            "MENSAGEM",
+            placeholder=f"Escreve para {membro['nome'].split('.')[-1].strip().split(' ')[0]}...",
+            key=f"input_msg_{id_membro}",
+            label_visibility="collapsed"
+        )
+
+        col_s1, col_s2 = st.columns([3, 1])
+        with col_s2:
+            enviado = st.form_submit_button("ENVIAR →", use_container_width=True)
+
+        if enviado and texto_msg and texto_msg.strip():
+            enviar_mensagem(telefone, id_membro, 'cliente', texto_msg.strip())
+
+            # ─── Resposta automática humanizada ───
+            _gerar_resposta_automatica(telefone, id_membro, texto_msg.strip(), primeiro_nome)
+
+            st.rerun()
+
+    # ─── Sugestões rápidas ───
+    st.markdown("<div style='height:0.5rem;'></div>", unsafe_allow_html=True)
+    st.markdown(componente_label("Sugestões rápidas"), unsafe_allow_html=True)
+
+    sugestoes = _obter_sugestoes(id_membro)
+    cols = st.columns(len(sugestoes))
+    for i, (sug_texto, sug_btn) in enumerate(sugestoes):
+        with cols[i]:
+            if st.button(sug_btn, key=f"sug_{id_membro}_{i}", use_container_width=True):
+                enviar_mensagem(telefone, id_membro, 'cliente', sug_texto)
+                _gerar_resposta_automatica(telefone, id_membro, sug_texto, primeiro_nome)
+                st.rerun()
+
+
+def _obter_sugestoes(id_membro):
+    """Retorna sugestões de mensagens rápidas por tipo de membro."""
+    sugestoes_por_membro = {
+        'dra_maria': [
+            ("Quero marcar uma consulta geral.", "MARCAR CONSULTA"),
+            ("Tenho tido febres. O que devo fazer?", "TENHO FEBRE"),
+            ("Preciso de um check-up completo.", "CHECK-UP"),
+        ],
+        'dr_pedro': [
+            ("Quero marcar consulta para o meu filho.", "CONSULTA CRIANÇA"),
+            ("O meu bebé tem febre. É grave?", "BEBÉ COM FEBRE"),
+            ("Quando devo vacinar o meu filho?", "VACINAS"),
+        ],
+        'enf_teresa': [
+            ("Quais vacinas o meu filho precisa?", "CALENDÁRIO VACINAL"),
+            ("Preciso de uma triagem rápida.", "TRIAGEM"),
+            ("Posso ir sem marcação?", "SEM MARCAÇÃO"),
+        ],
+        'dr_joao': [
+            ("Tenho drepanocitose e preciso de acompanhamento.", "DREPANOCITOSE"),
+            ("A minha tensão está alta. O que faço?", "HIPERTENSÃO"),
+            ("Preciso de seguimento para doença crónica.", "DOENÇA CRÓNICA"),
+        ],
+        'sec_ana': [
+            ("Quero marcar uma consulta.", "MARCAR"),
+            ("Preciso remarcar a minha consulta.", "REMARCAR"),
+            ("Qual é o horário de funcionamento?", "HORÁRIO"),
+        ],
+    }
+    return sugestoes_por_membro.get(id_membro, [
+        ("Olá, preciso de ajuda.", "AJUDA"),
+        ("Quero marcar consulta.", "MARCAR"),
+    ])
+
+
+def _gerar_resposta_automatica(telefone, id_membro, texto_cliente, nome_cliente):
+    """
+    Gera uma resposta automática humanizada com base no contexto.
+    Simula a resposta do membro da equipa.
+    """
+    membro = EQUIPA_LUCILIO[id_membro]
+    texto_lower = texto_cliente.lower()
+
+    # ─── Respostas por contexto ───
+    if any(p in texto_lower for p in ['marcar', 'consulta', 'agendar', 'marcação']):
+        respostas = {
+            'dra_maria': (
+                f"Olá {nome_cliente}! Claro que sim. "
+                f"Temos horários disponíveis esta semana. "
+                f"Preferes de manhã ou à tarde? "
+                f"Assim que me disseres, reservo logo para ti."
+            ),
+            'dr_pedro': (
+                f"Olá {nome_cliente}! Vamos tratar disso. "
+                f"A criança tem quantos anos? Assim consigo "
+                f"preparar melhor a consulta. Diz-me também "
+                f"se é a primeira vez que vem cá."
+            ),
+            'enf_teresa': (
+                f"Olá {nome_cliente}! Para marcação de consulta, "
+                f"o melhor é falares com a Ana Cristina, a nossa "
+                f"secretária. Ela trata de tudo! Mas se precisares "
+                f"de triagem ou vacinação, estou cá para ti."
+            ),
+            'dr_joao': (
+                f"Olá {nome_cliente}! Vou pedir à Ana Cristina "
+                f"para te encaixar na minha agenda. Enquanto isso, "
+                f"podes dizer-me que medicação estás a tomar "
+                f"actualmente?"
+            ),
+            'sec_ana': (
+                f"Olá {nome_cliente}! Com todo o gosto. "
+                f"Com qual médico gostarias de marcar? "
+                f"Temos a Dra. Maria (clínica geral), "
+                f"o Dr. Pedro (pediatria) e o Dr. João "
+                f"(medicina interna). Diz-me qual preferes "
+                f"e o melhor horário para ti."
+            ),
+        }
+        resposta = respostas.get(id_membro, f"Olá {nome_cliente}! Vamos tratar disso.")
+
+    elif any(p in texto_lower for p in ['febre', 'febres', 'temperatura']):
+        respostas = {
+            'dra_maria': (
+                f"{nome_cliente}, febre é sempre para levar a sério, "
+                f"especialmente aqui em Luanda. Há quantos dias tens febre? "
+                f"E tens outros sintomas — dores no corpo, dor de cabeça, "
+                f"vómitos? Enquanto isso, bebe muita água e toma paracetamol "
+                f"se a febre subir acima de 38°C."
+            ),
+            'dr_pedro': (
+                f"Vamos com calma, {nome_cliente}. A criança tem febre "
+                f"há quanto tempo? Está a comer e a beber normalmente? "
+                f"Se a febre passar de 38.5°C, dá paracetamol na dose "
+                f"certa para o peso. E se puder, vem cá amanhã logo "
+                f"de manhã para fazermos um teste rápido de malária."
+            ),
+            'enf_teresa': (
+                f"{nome_cliente}, febre pode ser muita coisa. "
+                f"O melhor é vires cá para uma triagem rápida — "
+                f"fazemos teste de malária em 15 minutos. "
+                f"Podes vir logo de manhã sem marcação."
+            ),
+        }
+        resposta = respostas.get(id_membro, (
+            f"{nome_cliente}, se tens febre, o mais seguro é vires ao "
+            f"consultório para fazermos uma avaliação. Não deixes passar."
+        ))
+
+    elif any(p in texto_lower for p in ['check-up', 'checkup', 'exames', 'exame']):
+        resposta = (
+            f"Boa ideia, {nome_cliente}! Prevenir é sempre melhor. "
+            f"O nosso check-up inclui hemograma completo, "
+            f"teste de malária, glicemia e tensão arterial. "
+            f"Queres que te marque um horário esta semana?"
+        )
+
+    elif any(p in texto_lower for p in ['vacina', 'vacinas', 'vacinação', 'calendário']):
+        respostas = {
+            'enf_teresa': (
+                f"{nome_cliente}, aqui no consultório fazemos todas as "
+                f"vacinas do calendário nacional. Se me disseres a idade "
+                f"da criança, digo-te exactamente quais faltam. "
+                f"Traz o boletim de vacinas se tiveres."
+            ),
+            'dr_pedro': (
+                f"As vacinas são fundamentais, {nome_cliente}! "
+                f"A Enf.ª Teresa é a melhor pessoa para te orientar "
+                f"sobre isso — ela conhece o calendário vacinal de cor. "
+                f"Mas se tiveres dúvidas médicas, estou cá."
+            ),
+        }
+        resposta = respostas.get(id_membro, (
+            f"{nome_cliente}, para questões de vacinação, "
+            f"a nossa Enf.ª Teresa é a pessoa ideal. "
+            f"Ela vai ajudar-te com tudo."
+        ))
+
+    elif any(p in texto_lower for p in ['drepanocitose', 'drep', 'falciforme', 'ss']):
+        respostas = {
+            'dr_joao': (
+                f"{nome_cliente}, fazes bem em procurar acompanhamento. "
+                f"A drepanocitose precisa de seguimento regular. "
+                f"Estás a tomar ácido fólico? E como tens passado — "
+                f"tiveste alguma crise recente? Conta-me tudo "
+                f"para eu poder ajudar-te melhor."
+            ),
+            'dra_maria': (
+                f"{nome_cliente}, para drepanocitose o Dr. João é "
+                f"quem melhor te pode acompanhar. Vou pedir à Ana "
+                f"para te marcar com ele. Entretanto, lembra-te de "
+                f"beber muita água e evitar o frio."
+            ),
+        }
+        resposta = respostas.get(id_membro, (
+            f"{nome_cliente}, o Dr. João Kamutali é o nosso especialista "
+            f"em drepanocitose. Vou encaminhar-te para ele."
+        ))
+
+    elif any(p in texto_lower for p in ['horário', 'horario', 'aberto', 'funciona']):
+        resposta = (
+            f"Claro, {nome_cliente}! O consultório funciona de "
+            f"segunda a sexta das 07h30 às 18h, e ao sábado "
+            f"das 07h30 às 14h. Domingo estamos fechados. "
+            f"Precisas de mais alguma coisa?"
+        )
+
+    elif any(p in texto_lower for p in ['remarcar', 'reagendar', 'mudar', 'alterar']):
+        resposta = (
+            f"Sem problema, {nome_cliente}! Diz-me a data que "
+            f"tinhas marcada e o novo horário que preferes. "
+            f"Vou verificar a disponibilidade e confirmo-te já."
+        )
+
+    elif any(p in texto_lower for p in ['obrigado', 'obrigada', 'agradeço', 'valeu']):
+        resposta = (
+            f"De nada, {nome_cliente}! É para isso que estamos cá. "
+            f"Qualquer coisa, não hesites em escrever. "
+            f"Cuida-te bem! 🙏"
+        )
+
+    elif any(p in texto_lower for p in ['olá', 'ola', 'oi', 'bom dia', 'boa tarde', 'boa noite']):
+        saudacao = obter_saudacao()
+        resposta = (
+            f"{saudacao}, {nome_cliente}! Que bom falar contigo. "
+            f"Em que te posso ajudar hoje?"
+        )
+
+    elif any(p in texto_lower for p in ['triagem', 'sem marcação', 'urgente', 'urgência']):
+        resposta = (
+            f"{nome_cliente}, podes vir directamente ao consultório "
+            f"para triagem — não precisas de marcação para isso. "
+            f"A Enf.ª Teresa faz a avaliação inicial e, se for "
+            f"necessário, és atendido logo pelo médico. "
+            f"O melhor é vires logo de manhã."
+        )
+
+    elif any(p in texto_lower for p in ['tensão', 'tensao', 'pressão', 'pressao', 'hipertensão']):
+        resposta = (
+            f"{nome_cliente}, a tensão alta não dá para brincar. "
+            f"Sabes os valores que tens medido? Se estiver acima "
+            f"de 14/9, convém vires cá para fazermos uma avaliação "
+            f"completa. Enquanto isso, reduz o sal na comida "
+            f"e tenta caminhar um pouco todos os dias."
+        )
+
+    elif any(p in texto_lower for p in ['dor', 'dores', 'doi', 'doer']):
+        resposta = (
+            f"{nome_cliente}, diz-me onde é a dor e há quanto tempo "
+            f"sentes. É uma dor constante ou vai e vem? "
+            f"Isso ajuda-me a perceber melhor o que se passa. "
+            f"Se a dor for muito forte, vem ao consultório "
+            f"— não fiques a sofrer em casa."
+        )
+
+    else:
+        # Resposta genérica mas calorosa
+        respostas_genericas = [
+            (
+                f"{nome_cliente}, obrigado por partilhares isso comigo. "
+                f"Podes dar-me mais detalhes para eu te ajudar melhor? "
+                f"Estou aqui com toda a atenção."
+            ),
+            (
+                f"Entendi, {nome_cliente}. Deixa-me perceber melhor — "
+                f"podes explicar-me um pouco mais? Quero ter a certeza "
+                f"de que te dou a melhor orientação possível."
+            ),
+            (
+                f"{nome_cliente}, estou a ouvir-te. Conta-me mais "
+                f"para eu poder ajudar-te da melhor forma. "
+                f"Aqui no Consultório Lucílio estamos sempre do teu lado."
+            ),
         ]
+        import random
+        resposta = random.choice(respostas_genericas)
 
-        for titulo, texto in dicas:
-            conteudo = f'''
-            <div style="font-weight:700;color:#1A1A18;font-size:0.88rem;
-                letter-spacing:-0.01em;">
-                {titulo}
-            </div>
-            <div style="color:#8A8A82;font-size:0.82rem;margin-top:0.3rem;
-                line-height:1.7;">
-                {texto}
-            </div>'''
-            st.markdown(componente_card(conteudo), unsafe_allow_html=True)
+    # Simular um pequeno atraso antes da resposta
+    enviar_mensagem(telefone, id_membro, 'membro', resposta)
 
-    with tab_sobre:
-        st.markdown("<div style='height:1rem;'></div>", unsafe_allow_html=True)
-        st.markdown(componente_logo("grande"), unsafe_allow_html=True)
 
-        st.markdown(componente_linha_fina(), unsafe_allow_html=True)
-
-        conteudo_what = f'''
-        <div style="color:#8A8A82;font-size:0.65rem;text-transform:uppercase;
-            letter-spacing:0.12em;font-weight:700;margin-bottom:0.8rem;">
-            O que é?
-        </div>
-        <div style="color:#1A1A18;font-size:0.95rem;line-height:1.85;">
-            O HemaSakula é uma plataforma angolana que te ajuda a encontrar
-            clínicas e hospitais perto de ti. Além disso, as clínicas parceiras
-            usam o nosso sistema inteligente para analisar exames de sangue
-            e dar melhores diagnósticos.
-        </div>'''
-        st.markdown(componente_card(conteudo_what), unsafe_allow_html=True)
-
-        col_p1, col_p2 = st.columns(2)
-        with col_p1:
-            conteudo_paciente = f'''
-            <div style="color:#8A8A82;font-size:0.65rem;text-transform:uppercase;
-                letter-spacing:0.12em;font-weight:700;margin-bottom:0.8rem;">
-                Para ti
-            </div>
-            <div style="color:#5A5A52;font-size:0.88rem;line-height:1.85;">
-                Encontra clínicas perto da tua zona. Recebe alertas de saúde
-                para o teu município. Sabe quando desparasitar, vacinar,
-                fazer check-up.
-            </div>'''
-            st.markdown(
-                componente_card(conteudo_paciente, borda_esquerda="#1B6B3A"),
-                unsafe_allow_html=True
-            )
-
-        with col_p2:
-            conteudo_clinica = f'''
-            <div style="color:#8A8A82;font-size:0.65rem;text-transform:uppercase;
-                letter-spacing:0.12em;font-weight:700;margin-bottom:0.8rem;">
-                Para clínicas
-            </div>
-            <div style="color:#5A5A52;font-size:0.88rem;line-height:1.85;">
-                Apoio à decisão clínica com IA. Análise de hemogramas
-                inteligente. Dados epidemiológicos por município.
-            </div>'''
-            st.markdown(
-                componente_card(conteudo_clinica, borda_esquerda="#C9553A"),
-                unsafe_allow_html=True
-            )
-
-    st.markdown(componente_footer(), unsafe_allow_html=True)
-
+# ══════════════════════════════════════════════════════
+#  PAINEL DA EMPRESA
+# ══════════════════════════════════════════════════════
 
 def tela_painel_empresa():
     st.markdown(css_global(), unsafe_allow_html=True)
@@ -1769,6 +2171,10 @@ def tela_painel_empresa():
 
     st.markdown(componente_footer(), unsafe_allow_html=True)
 
+
+# ══════════════════════════════════════════════════════
+#  MAIN
+# ══════════════════════════════════════════════════════
 
 def main():
     ecra = st.session_state.get('ecra', 'inicio')
