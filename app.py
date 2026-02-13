@@ -302,17 +302,6 @@ def contar_nao_lidas_empresa(telefone_cliente):
     return cont
 
 
-def contar_nao_lidas_cliente(telefone_cliente):
-    conversa = obter_conversa(telefone_cliente)
-    cont = 0
-    for msg in reversed(conversa):
-        if msg['remetente'] == 'empresa':
-            cont += 1
-        else:
-            break
-    return cont
-
-
 def obter_conversas_pendentes():
     mensagens = carregar_mensagens()
     estados = carregar_estados()
@@ -380,16 +369,15 @@ def restaurar_sessao_url():
     if 'ecra' not in st.session_state:
         ecra = params.get('e', 'inicio')
         st.session_state['ecra'] = ecra
-
         if ecra == 'cliente' and 't' in params:
             tel = params['t']
             clientes = carregar_clientes()
             if tel in clientes:
                 st.session_state['cliente'] = clientes[tel]
-
+            else:
+                st.session_state['ecra'] = 'inicio'
         if ecra == 'empresa' and 'u' in params:
             st.session_state['empresa_usuario'] = params['u']
-
         if 'ca' in params:
             st.session_state['conversa_activa'] = params['ca']
 
@@ -484,6 +472,18 @@ def processar_analise(modelo, encoders, features, dados_paciente):
     progress_bar.empty()
     status_text.empty()
     return gravidade, resultados, erro
+
+
+def svg_seringa():
+    return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2l4 4"/><path d="M17 7l3-3"/><path d="M19 9l-8.7 8.7a2.1 2.1 0 0 1-3 0L3.3 13.7a2.1 2.1 0 0 1 0-3L12 2"/><path d="M5 19l3 3"/><path d="M2 22l3-3"/><line x1="9" y1="8" x2="16" y2="15"/></svg>'
+
+
+def svg_seta():
+    return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>'
+
+
+def svg_enviar():
+    return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>'
 
 
 def css_global():
@@ -637,16 +637,15 @@ def componente_logo(tamanho="grande"):
             '<div style="font-size:0.68rem;color:#8A8A82;letter-spacing:0.18em;text-transform:uppercase;margin-top:1rem;font-weight:600;">Angola a Cuidar dos Seus</div>'
             '</div>'
         )
-    else:
-        icon = svg_icon.format(w="20", h="20")
-        return (
-            '<div style="display:flex;align-items:center;gap:0.7rem;">'
-            '<div style="width:38px;height:38px;background:#15291C;display:flex;align-items:center;justify-content:center;flex-shrink:0;">'
-            + icon +
-            '</div>'
-            '<div><div style="font-size:1.1rem;font-weight:800;color:#1A1A18;letter-spacing:-0.03em;">HemaSakula</div></div>'
-            '</div>'
-        )
+    icon = svg_icon.format(w="20", h="20")
+    return (
+        '<div style="display:flex;align-items:center;gap:0.7rem;">'
+        '<div style="width:38px;height:38px;background:#15291C;display:flex;align-items:center;justify-content:center;flex-shrink:0;">'
+        + icon +
+        '</div>'
+        '<div><div style="font-size:1.1rem;font-weight:800;color:#1A1A18;letter-spacing:-0.03em;">HemaSakula</div></div>'
+        '</div>'
+    )
 
 
 def componente_linha():
@@ -679,181 +678,64 @@ def componente_digitando(nome):
     )
 
 
-def tela_boas_vindas():
-    st.markdown(css_global(), unsafe_allow_html=True)
-    st.markdown(css_tela_inicio(), unsafe_allow_html=True)
-
-    saudacao = obter_saudacao()
-    st.markdown("<div style='height:6vh;'></div>", unsafe_allow_html=True)
-    st.markdown(componente_logo("grande"), unsafe_allow_html=True)
-    st.markdown(componente_linha(), unsafe_allow_html=True)
-
-    st.markdown(
-        '<div style="text-align:center;margin-bottom:2.5rem;">'
-        '<div style="font-size:1.8rem;font-weight:800;color:#1A1A18;letter-spacing:-0.03em;margin-bottom:0.8rem;">'
-        + saudacao + '.</div>'
-        '<div style="font-size:0.95rem;color:#8A8A82;line-height:1.8;max-width:360px;margin:0 auto;">'
-        'Fala directamente com a recepcao do Consultorio Medico Lucilio. Envia a tua mensagem e aguarda que alguem te atenda.</div></div>',
-        unsafe_allow_html=True
-    )
-
-    st.markdown(componente_linha_fina(), unsafe_allow_html=True)
-
-    nome = st.text_input("NOME", placeholder="Como queres que te chamemos?", key="nome_cliente")
-    municipio = st.selectbox("MUNICIPIO", MUNICIPIOS_LISTA, index=None, placeholder="Onde vives?", key="municipio_cliente")
-    telefone = st.text_input("TELEFONE", placeholder="9xx xxx xxx", key="telefone_cliente")
-    email = st.text_input("EMAIL (OPCIONAL)", placeholder="exemplo@email.com", key="email_cliente")
-
-    st.markdown("<div style='height:1rem;'></div>", unsafe_allow_html=True)
-
-    if st.button("COMECAR", key="btn_comecar", use_container_width=True):
-        erros = []
-        if not nome or not nome.strip():
-            erros.append("Precisamos do teu nome.")
-        if not municipio:
-            erros.append("Escolhe o municipio onde vives.")
-        if not telefone:
-            erros.append("O numero de telefone e obrigatorio.")
-        elif not validar_telefone(telefone):
-            erros.append("O numero deve ter 9 digitos e comecar por 9.")
-        if email and email.strip() and not validar_email(email.strip()):
-            erros.append("O email nao parece valido.")
-        if erros:
-            for erro in erros:
-                st.error(erro)
-        else:
-            sucesso, dados = registar_cliente(nome.strip(), telefone.strip(), municipio, email.strip() if email else '')
-            if sucesso:
-                st.session_state['ecra'] = 'cliente'
-                st.session_state['cliente'] = dados
-                guardar_sessao_url()
-                st.rerun()
-
-    st.markdown("<div style='height:3rem;'></div>", unsafe_allow_html=True)
-    st.markdown(componente_linha(), unsafe_allow_html=True)
-
-    st.markdown(
-        '<div style="text-align:center;margin-bottom:1.2rem;">'
-        '<div style="color:#8A8A82;font-size:0.68rem;letter-spacing:0.14em;text-transform:uppercase;font-weight:700;">Acesso profissional</div></div>',
-        unsafe_allow_html=True
-    )
-
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        if st.button("ENTRAR COMO EMPRESA", key="btn_empresa", use_container_width=True):
-            st.session_state['ecra'] = 'login_empresa'
-            guardar_sessao_url()
-            st.rerun()
-
-    st.markdown(componente_footer(), unsafe_allow_html=True)
-
-
-def tela_login_empresa():
-    st.markdown(css_global(), unsafe_allow_html=True)
-    st.markdown(css_tela_inicio(), unsafe_allow_html=True)
-
-    st.markdown("<div style='height:8vh;'></div>", unsafe_allow_html=True)
-
-    svg_small = '<svg width="28" height="28" viewBox="0 0 44 44" fill="none"><circle cx="22" cy="22" r="16" stroke="#D4E7DC" stroke-width="2.5" fill="none"/><circle cx="22" cy="22" r="8" fill="#C9553A"/><line x1="22" y1="2" x2="22" y2="10" stroke="#D4E7DC" stroke-width="2" stroke-linecap="round"/><line x1="22" y1="34" x2="22" y2="42" stroke="#D4E7DC" stroke-width="2" stroke-linecap="round"/><line x1="2" y1="22" x2="10" y2="22" stroke="#D4E7DC" stroke-width="2" stroke-linecap="round"/><line x1="34" y1="22" x2="42" y2="22" stroke="#D4E7DC" stroke-width="2" stroke-linecap="round"/></svg>'
-
-    st.markdown(
-        '<div style="text-align:center;margin-bottom:2.5rem;">'
-        '<div style="width:56px;height:56px;background:#15291C;display:inline-flex;align-items:center;justify-content:center;margin-bottom:1.5rem;">'
-        + svg_small +
+def componente_botao_decorado(texto, icone="seta"):
+    if icone == "seringa":
+        svg = svg_seringa()
+    elif icone == "enviar":
+        svg = svg_enviar()
+    else:
+        svg = svg_seta()
+    return (
+        '<div style="display:flex;align-items:center;justify-content:center;gap:0.7rem;">'
+        '<span>' + texto + '</span>'
+        '<span style="display:inline-flex;align-items:center;">' + svg + '</span>'
         '</div>'
-        '<div style="font-size:1.6rem;font-weight:800;color:#1A1A18;letter-spacing:-0.03em;">Acesso Profissional</div>'
-        '<div style="font-size:0.85rem;color:#8A8A82;margin-top:0.5rem;">Para clinicas e hospitais parceiros</div></div>',
-        unsafe_allow_html=True
-    )
-
-    st.markdown(componente_linha_fina(), unsafe_allow_html=True)
-
-    usuario = st.text_input("UTILIZADOR", placeholder="O teu utilizador", key="emp_usuario")
-    senha = st.text_input("PALAVRA-PASSE", type="password", placeholder="A tua palavra-passe", key="emp_senha")
-
-    st.markdown("<div style='height:1rem;'></div>", unsafe_allow_html=True)
-
-    if st.button("ENTRAR", key="btn_entrar_empresa", use_container_width=True):
-        if not usuario or not senha:
-            st.error("Preenche os dois campos.")
-        else:
-            autenticado = False
-            try:
-                usuarios_validos = st.secrets["usuarios"]
-                if usuario.strip().lower() in usuarios_validos:
-                    if usuarios_validos[usuario.strip().lower()] == senha:
-                        autenticado = True
-            except Exception:
-                pass
-            if autenticado:
-                st.session_state['ecra'] = 'empresa'
-                st.session_state['empresa_usuario'] = usuario.strip()
-                guardar_sessao_url()
-                st.rerun()
-            else:
-                st.error("Credenciais incorrectas.")
-
-    st.markdown("<div style='height:1.5rem;'></div>", unsafe_allow_html=True)
-
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        if st.button("VOLTAR", key="btn_voltar_login", use_container_width=True):
-            st.session_state['ecra'] = 'inicio'
-            guardar_sessao_url()
-            st.rerun()
-
-    st.markdown(
-        '<div style="text-align:center;margin-top:3rem;color:#B5B3AD;font-size:0.68rem;letter-spacing:0.12em;text-transform:uppercase;">'
-        'Acesso restrito a profissionais autorizados</div>',
-        unsafe_allow_html=True
     )
 
 
-def renderizar_mensagens_chat(telefone, lado):
+def renderizar_mensagens_html(telefone, lado):
     conversa = obter_conversa(telefone)
     clientes = carregar_clientes()
     nome_cliente = clientes.get(telefone, {}).get('nome', 'Cliente')
     iniciais = ''.join([p[0].upper() for p in nome_cliente.split()[:2]]) if nome_cliente else '??'
+    html_parts = []
 
     if not conversa:
-        return
+        return ""
 
     data_anterior = None
     for msg in conversa:
         msg_data = msg.get('data', '')
         if msg_data != data_anterior:
             data_anterior = msg_data
-            st.markdown(
+            html_parts.append(
                 '<div style="text-align:center;margin:1.2rem 0;">'
                 '<span style="background:#F3F2EE;color:#B5B3AD;font-size:0.65rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:0.3rem 1rem;border:1px solid #DDDCD7;">'
-                + msg_data + '</span></div>',
-                unsafe_allow_html=True
+                + msg_data + '</span></div>'
             )
 
         if lado == 'cliente':
             if msg['remetente'] == 'cliente':
-                st.markdown(
+                html_parts.append(
                     '<div style="display:flex;justify-content:flex-end;margin-bottom:0.6rem;">'
                     '<div style="background:#15291C;color:#E8E6E1;padding:0.9rem 1.2rem;max-width:75%;">'
                     '<div style="font-size:0.9rem;line-height:1.7;font-weight:500;">' + msg['texto'] + '</div>'
                     '<div style="text-align:right;color:#5A6B5E;font-size:0.65rem;margin-top:0.4rem;font-weight:600;">' + msg['hora'] + '</div>'
-                    '</div></div>',
-                    unsafe_allow_html=True
+                    '</div></div>'
                 )
             else:
-                st.markdown(
+                html_parts.append(
                     '<div style="display:flex;justify-content:flex-start;margin-bottom:0.6rem;gap:0.5rem;">'
                     '<div style="width:28px;height:28px;background:#15291C;display:flex;align-items:center;justify-content:center;color:#D4E7DC;font-weight:800;font-size:0.5rem;flex-shrink:0;margin-top:0.2rem;">RL</div>'
                     '<div style="background:#FFFFFF;color:#1A1A18;padding:0.9rem 1.2rem;max-width:75%;border:2px solid #DDDCD7;">'
                     '<div style="color:#8A8A82;font-size:0.65rem;font-weight:700;margin-bottom:0.3rem;">' + msg.get('nome', 'Recepcao') + '</div>'
                     '<div style="font-size:0.9rem;line-height:1.7;font-weight:500;">' + msg['texto'] + '</div>'
                     '<div style="color:#B5B3AD;font-size:0.65rem;margin-top:0.4rem;font-weight:600;">' + msg['hora'] + '</div>'
-                    '</div></div>',
-                    unsafe_allow_html=True
+                    '</div></div>'
                 )
         else:
             if msg['remetente'] == 'cliente':
-                st.markdown(
+                html_parts.append(
                     '<div style="display:flex;justify-content:flex-start;margin-bottom:0.6rem;gap:0.5rem;">'
                     '<div style="width:28px;height:28px;background:#C9553A;display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:0.5rem;flex-shrink:0;margin-top:0.2rem;">'
                     + iniciais + '</div>'
@@ -861,97 +743,34 @@ def renderizar_mensagens_chat(telefone, lado):
                     '<div style="color:#C9553A;font-size:0.65rem;font-weight:700;margin-bottom:0.3rem;">' + msg.get('nome', nome_cliente) + '</div>'
                     '<div style="font-size:0.9rem;line-height:1.7;font-weight:500;">' + msg['texto'] + '</div>'
                     '<div style="color:#B5B3AD;font-size:0.65rem;margin-top:0.4rem;font-weight:600;">' + msg['hora'] + '</div>'
-                    '</div></div>',
-                    unsafe_allow_html=True
+                    '</div></div>'
                 )
             else:
-                st.markdown(
+                html_parts.append(
                     '<div style="display:flex;justify-content:flex-end;margin-bottom:0.6rem;">'
                     '<div style="background:#15291C;color:#E8E6E1;padding:0.9rem 1.2rem;max-width:75%;">'
                     '<div style="color:#5A6B5E;font-size:0.65rem;font-weight:700;margin-bottom:0.3rem;">' + msg.get('nome', 'Recepcao') + '</div>'
                     '<div style="font-size:0.9rem;line-height:1.7;font-weight:500;">' + msg['texto'] + '</div>'
                     '<div style="text-align:right;color:#5A6B5E;font-size:0.65rem;margin-top:0.4rem;font-weight:600;">' + msg['hora'] + '</div>'
-                    '</div></div>',
-                    unsafe_allow_html=True
+                    '</div></div>'
                 )
 
     if lado == 'cliente':
-        empresa_escrevendo = verificar_digitando(telefone, 'empresa')
-        if empresa_escrevendo:
+        if verificar_digitando(telefone, 'empresa'):
             estado = obter_estado_conversa(telefone)
             nome_quem = estado.get('atendido_por', 'Recepcao')
-            st.markdown(componente_digitando(nome_quem), unsafe_allow_html=True)
+            html_parts.append(componente_digitando(nome_quem))
     else:
-        cliente_escrevendo = verificar_digitando(telefone, 'cliente')
-        if cliente_escrevendo:
-            st.markdown(componente_digitando(nome_cliente), unsafe_allow_html=True)
+        if verificar_digitando(telefone, 'cliente'):
+            html_parts.append(componente_digitando(nome_cliente))
+
+    return '\n'.join(html_parts)
 
 
-def tela_painel_cliente():
-    st.markdown(css_global(), unsafe_allow_html=True)
-    st.markdown(css_painel_cliente(), unsafe_allow_html=True)
-
-    cliente = st.session_state.get('cliente', {})
-    nome = cliente.get('nome', 'Amigo')
-    telefone = cliente.get('telefone', '')
-    primeiro_nome = nome.split()[0] if nome else 'Amigo'
-    saudacao = obter_saudacao()
-
-    col_h1, col_h2 = st.columns([3, 1])
-    with col_h1:
-        st.markdown(componente_logo("pequeno"), unsafe_allow_html=True)
-    with col_h2:
-        st.markdown("<div style='height:0.3rem;'></div>", unsafe_allow_html=True)
-        if st.button("SAIR", key="btn_sair_cliente"):
-            for k in list(st.session_state.keys()):
-                del st.session_state[k]
-            st.query_params.clear()
-            st.rerun()
-
-    st.markdown(componente_linha(), unsafe_allow_html=True)
-
+@st.fragment(run_every=5)
+def fragmento_chat_cliente(telefone):
     estado = obter_estado_conversa(telefone)
-
-    if estado['status'] == 'atendido':
-        status_html = (
-            '<span style="background:#EDF2EE;color:#2D5A3D;border:2px solid #C4D4C8;'
-            'display:inline-block;padding:0.35rem 0.9rem;font-size:0.68rem;font-weight:700;'
-            'letter-spacing:0.1em;text-transform:uppercase;">O RESPONSAVEL ESTA PRONTO</span>'
-        )
-    elif estado['status'] == 'aguardando':
-        status_html = (
-            '<span style="background:#FDF8F0;color:#8A6B3E;border:2px solid #DDD0B8;'
-            'display:inline-block;padding:0.35rem 0.9rem;font-size:0.68rem;font-weight:700;'
-            'letter-spacing:0.1em;text-transform:uppercase;">AGUARDANDO ATENDIMENTO</span>'
-        )
-    else:
-        status_html = (
-            '<span style="background:#F3F2EE;color:#5A5A52;border:2px solid #DDDCD7;'
-            'display:inline-block;padding:0.35rem 0.9rem;font-size:0.68rem;font-weight:700;'
-            'letter-spacing:0.1em;text-transform:uppercase;">RECEPCAO LUCILIO</span>'
-        )
-
-    st.markdown(
-        '<div style="margin-bottom:0.5rem;">'
-        '<div style="font-size:2.2rem;font-weight:900;color:#1A1A18;letter-spacing:-0.04em;line-height:1.1;">'
-        + saudacao + ',<br>' + primeiro_nome + '.</div></div>',
-        unsafe_allow_html=True
-    )
-
-    st.markdown(componente_linha_fina(), unsafe_allow_html=True)
-
-    st.markdown(
-        '<div style="background:#FFFFFF;border:2px solid #DDDCD7;border-left:4px solid #15291C;padding:1.3rem 1.4rem;margin-bottom:1rem;">'
-        '<div style="display:flex;align-items:center;gap:1rem;">'
-        '<div style="width:52px;height:52px;background:#15291C;display:flex;align-items:center;justify-content:center;flex-shrink:0;">'
-        '<span style="color:#D4E7DC;font-weight:800;font-size:0.8rem;letter-spacing:0.05em;">RL</span></div>'
-        '<div style="flex:1;">'
-        '<div style="font-weight:800;color:#1A1A18;font-size:1.1rem;letter-spacing:-0.02em;">Recepcao Lucilio</div>'
-        '<div style="color:#8A8A82;font-size:0.82rem;margin-top:0.2rem;">Consultorio Medico Lucilio — Luanda</div></div>'
-        '<div>' + status_html + '</div>'
-        '</div></div>',
-        unsafe_allow_html=True
-    )
+    conversa = obter_conversa(telefone)
 
     if estado['status'] == 'atendido' and estado.get('atendido_por'):
         st.markdown(
@@ -965,144 +784,33 @@ def tela_painel_cliente():
         st.markdown(
             '<div style="background:#FDF8F0;border:2px solid #DDD0B8;border-left:4px solid #8A6B3E;padding:1rem 1.4rem;margin-bottom:1rem;">'
             '<div style="color:#8A6B3E;font-size:0.85rem;font-weight:600;line-height:1.7;">'
-            'A tua mensagem foi enviada. A recepcao vai atender-te em breve. Aguarda um momento.'
+            'A tua mensagem foi enviada. A recepcao vai atender-te em breve.'
             '</div></div>',
             unsafe_allow_html=True
         )
-    else:
-        st.markdown(
-            '<div style="color:#5A5A52;font-size:0.9rem;line-height:1.8;margin-bottom:1.5rem;">'
-            'Envia uma mensagem para a recepcao do Consultorio Lucilio. '
-            'Alguem da equipa vai atender-te assim que possivel.</div>',
-            unsafe_allow_html=True
-        )
 
-    conversa = obter_conversa(telefone)
     if conversa:
         st.markdown(
             '<div style="color:#8A8A82;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.14em;font-weight:700;margin-bottom:0.8rem;">Conversa</div>',
             unsafe_allow_html=True
         )
-
-    zona_chat = st.container()
-    with zona_chat:
-        renderizar_mensagens_chat(telefone, 'cliente')
-
-    st.markdown("<div style='height:1rem;'></div>", unsafe_allow_html=True)
-
-    with st.form(key="form_msg_cliente", clear_on_submit=True):
-        st.markdown(
-            '<div style="color:#8A8A82;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.14em;font-weight:700;margin-bottom:0.8rem;">Escreve a tua mensagem</div>',
-            unsafe_allow_html=True
-        )
-
-        texto_msg = st.text_input(
-            "MENSAGEM",
-            placeholder="Escreve aqui...",
-            key="input_msg_cliente",
-            label_visibility="collapsed"
-        )
-
-        col_s1, col_s2 = st.columns([3, 1])
-        with col_s2:
-            enviado = st.form_submit_button("ENVIAR", use_container_width=True)
-
-        if enviado and texto_msg and texto_msg.strip():
-            enviar_mensagem_cliente(telefone, nome, texto_msg.strip())
-            st.rerun()
-
-    st.markdown(
-        '<div style="text-align:center;padding:1rem 0;">'
-        '<div style="color:#B5B3AD;font-size:0.72rem;font-weight:500;">A conversa actualiza a cada 5 segundos</div></div>',
-        unsafe_allow_html=True
-    )
-
-    st.markdown(componente_linha(), unsafe_allow_html=True)
-
-    st.markdown(
-        '<div style="color:#8A8A82;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.14em;font-weight:700;margin-bottom:0.8rem;">Informacao do consultorio</div>',
-        unsafe_allow_html=True
-    )
-
-    st.markdown(
-        '<div style="background:#FFFFFF;border:2px solid #DDDCD7;padding:1.3rem 1.4rem;margin-bottom:0.6rem;">'
-        '<div style="color:#8A8A82;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.12em;font-weight:700;margin-bottom:0.5rem;">Morada e contacto</div>'
-        '<div style="color:#1A1A18;font-size:0.92rem;line-height:1.7;">Consultorio Medico Lucilio<br>Luanda, Angola<br>'
-        '<span style="color:#8A8A82;">Tel: +244 923 000 000</span><br>'
-        '<span style="color:#8A8A82;">Seg a Sex 07h30-18h — Sab 07h30-14h</span></div></div>',
-        unsafe_allow_html=True
-    )
-
-    st.markdown(componente_footer(), unsafe_allow_html=True)
-
-    guardar_sessao_url()
-
-    time.sleep(5)
-    st.rerun()
+        html = renderizar_mensagens_html(telefone, 'cliente')
+        if html:
+            st.markdown(html, unsafe_allow_html=True)
 
 
-def tela_painel_empresa():
-    st.markdown(css_global(), unsafe_allow_html=True)
-    st.markdown(css_painel_empresa(), unsafe_allow_html=True)
-
-    usuario = st.session_state.get('empresa_usuario', 'Empresa')
-
-    col_header1, col_header2 = st.columns([3, 1])
-    with col_header1:
-        st.markdown(componente_logo("pequeno"), unsafe_allow_html=True)
-    with col_header2:
-        st.markdown(
-            '<div style="text-align:right;padding-top:0.5rem;">'
-            '<span style="color:#8A8A82;font-size:0.75rem;font-weight:600;letter-spacing:0.05em;">'
-            + usuario.capitalize() + ' — ' + datetime.now().strftime("%d/%m/%Y") + '</span></div>',
-            unsafe_allow_html=True
-        )
-
-    st.markdown(componente_linha(), unsafe_allow_html=True)
-
-    svg_sidebar = '<svg width="24" height="24" viewBox="0 0 44 44" fill="none"><circle cx="22" cy="22" r="16" stroke="#D4E7DC" stroke-width="2.5" fill="none"/><circle cx="22" cy="22" r="8" fill="#C9553A"/><line x1="22" y1="2" x2="22" y2="10" stroke="#D4E7DC" stroke-width="2" stroke-linecap="round"/><line x1="22" y1="34" x2="22" y2="42" stroke="#D4E7DC" stroke-width="2" stroke-linecap="round"/><line x1="2" y1="22" x2="10" y2="22" stroke="#D4E7DC" stroke-width="2" stroke-linecap="round"/><line x1="34" y1="22" x2="42" y2="22" stroke="#D4E7DC" stroke-width="2" stroke-linecap="round"/></svg>'
-
-    with st.sidebar:
-        st.markdown(
-            '<div style="text-align:center;padding:1.2rem 0 1.8rem 0;">'
-            '<div style="width:48px;height:48px;background:#1E3A28;display:inline-flex;align-items:center;justify-content:center;margin-bottom:0.8rem;">'
-            + svg_sidebar + '</div>'
-            '<div style="color:#E8E6E1;font-weight:700;font-size:0.9rem;">' + usuario.capitalize() + '</div>'
-            '<div style="color:#5A6B5E;font-size:0.62rem;margin-top:0.2rem;letter-spacing:0.12em;text-transform:uppercase;font-weight:600;">Recepcao Lucilio</div></div>',
-            unsafe_allow_html=True
-        )
-
-        st.markdown("---")
-
-        if st.button("SAIR", key="btn_sair_empresa", use_container_width=True):
-            for k in list(st.session_state.keys()):
-                del st.session_state[k]
-            st.query_params.clear()
-            st.rerun()
-
-    tab_mensagens, tab_hemograma = st.tabs(["MENSAGENS DE CLIENTES", "ANALISE DE HEMOGRAMA"])
-
-    with tab_mensagens:
-        renderizar_tab_mensagens(usuario)
-
-    with tab_hemograma:
-        renderizar_tab_hemograma()
-
-    guardar_sessao_url()
-
-    conversa_activa = st.session_state.get('conversa_activa', None)
-    if conversa_activa:
-        time.sleep(4)
-        st.rerun()
+@st.fragment(run_every=4)
+def fragmento_chat_empresa(telefone):
+    conversa = obter_conversa(telefone)
+    if conversa:
+        html = renderizar_mensagens_html(telefone, 'empresa')
+        if html:
+            st.markdown(html, unsafe_allow_html=True)
 
 
-def renderizar_tab_mensagens(usuario):
+@st.fragment(run_every=6)
+def fragmento_lista_conversas(usuario):
     conversas = obter_conversas_pendentes()
-    conversa_activa = st.session_state.get('conversa_activa', None)
-
-    if conversa_activa:
-        renderizar_conversa_empresa(conversa_activa, usuario)
-        return
 
     total = len(conversas)
     aguardando = sum(1 for c in conversas if c['status'] == 'aguardando')
@@ -1202,8 +910,307 @@ def renderizar_tab_mensagens(usuario):
                 )
 
 
+def tela_boas_vindas():
+    st.markdown(css_global(), unsafe_allow_html=True)
+    st.markdown(css_tela_inicio(), unsafe_allow_html=True)
+
+    saudacao = obter_saudacao()
+    st.markdown("<div style='height:6vh;'></div>", unsafe_allow_html=True)
+    st.markdown(componente_logo("grande"), unsafe_allow_html=True)
+    st.markdown(componente_linha(), unsafe_allow_html=True)
+
+    st.markdown(
+        '<div style="text-align:center;margin-bottom:2.5rem;">'
+        '<div style="font-size:1.8rem;font-weight:800;color:#1A1A18;letter-spacing:-0.03em;margin-bottom:0.8rem;">'
+        + saudacao + '.</div>'
+        '<div style="font-size:0.95rem;color:#8A8A82;line-height:1.8;max-width:360px;margin:0 auto;">'
+        'Fala directamente com a recepcao do Consultorio Medico Lucilio. Envia a tua mensagem e aguarda que alguem te atenda.</div></div>',
+        unsafe_allow_html=True
+    )
+
+    st.markdown(componente_linha_fina(), unsafe_allow_html=True)
+
+    nome = st.text_input("NOME", placeholder="Como queres que te chamemos?", key="nome_cliente")
+    municipio = st.selectbox("MUNICIPIO", MUNICIPIOS_LISTA, index=None, placeholder="Onde vives?", key="municipio_cliente")
+    telefone = st.text_input("TELEFONE", placeholder="9xx xxx xxx", key="telefone_cliente")
+    email = st.text_input("EMAIL (OPCIONAL)", placeholder="exemplo@email.com", key="email_cliente")
+
+    st.markdown("<div style='height:1rem;'></div>", unsafe_allow_html=True)
+
+    st.markdown(
+        '<div style="text-align:center;margin-bottom:0.3rem;">'
+        + componente_botao_decorado("COMECAR", "seringa") +
+        '</div>',
+        unsafe_allow_html=True
+    )
+
+    if st.button("COMEÇAR →", key="btn_comecar", use_container_width=True):
+        erros = []
+        if not nome or not nome.strip():
+            erros.append("Precisamos do teu nome.")
+        if not municipio:
+            erros.append("Escolhe o municipio onde vives.")
+        if not telefone:
+            erros.append("O numero de telefone e obrigatorio.")
+        elif not validar_telefone(telefone):
+            erros.append("O numero deve ter 9 digitos e comecar por 9.")
+        if email and email.strip() and not validar_email(email.strip()):
+            erros.append("O email nao parece valido.")
+        if erros:
+            for erro in erros:
+                st.error(erro)
+        else:
+            sucesso, dados = registar_cliente(nome.strip(), telefone.strip(), municipio, email.strip() if email else '')
+            if sucesso:
+                st.session_state['ecra'] = 'cliente'
+                st.session_state['cliente'] = dados
+                guardar_sessao_url()
+                st.rerun()
+
+    st.markdown("<div style='height:3rem;'></div>", unsafe_allow_html=True)
+    st.markdown(componente_linha(), unsafe_allow_html=True)
+
+    st.markdown(
+        '<div style="text-align:center;margin-bottom:1.2rem;">'
+        '<div style="color:#8A8A82;font-size:0.68rem;letter-spacing:0.14em;text-transform:uppercase;font-weight:700;">Acesso profissional</div></div>',
+        unsafe_allow_html=True
+    )
+
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        if st.button("ENTRAR COMO EMPRESA →", key="btn_empresa", use_container_width=True):
+            st.session_state['ecra'] = 'login_empresa'
+            guardar_sessao_url()
+            st.rerun()
+
+    st.markdown(componente_footer(), unsafe_allow_html=True)
+
+
+def tela_login_empresa():
+    st.markdown(css_global(), unsafe_allow_html=True)
+    st.markdown(css_tela_inicio(), unsafe_allow_html=True)
+
+    st.markdown("<div style='height:8vh;'></div>", unsafe_allow_html=True)
+
+    svg_small = '<svg width="28" height="28" viewBox="0 0 44 44" fill="none"><circle cx="22" cy="22" r="16" stroke="#D4E7DC" stroke-width="2.5" fill="none"/><circle cx="22" cy="22" r="8" fill="#C9553A"/><line x1="22" y1="2" x2="22" y2="10" stroke="#D4E7DC" stroke-width="2" stroke-linecap="round"/><line x1="22" y1="34" x2="22" y2="42" stroke="#D4E7DC" stroke-width="2" stroke-linecap="round"/><line x1="2" y1="22" x2="10" y2="22" stroke="#D4E7DC" stroke-width="2" stroke-linecap="round"/><line x1="34" y1="22" x2="42" y2="22" stroke="#D4E7DC" stroke-width="2" stroke-linecap="round"/></svg>'
+
+    st.markdown(
+        '<div style="text-align:center;margin-bottom:2.5rem;">'
+        '<div style="width:56px;height:56px;background:#15291C;display:inline-flex;align-items:center;justify-content:center;margin-bottom:1.5rem;">'
+        + svg_small +
+        '</div>'
+        '<div style="font-size:1.6rem;font-weight:800;color:#1A1A18;letter-spacing:-0.03em;">Acesso Profissional</div>'
+        '<div style="font-size:0.85rem;color:#8A8A82;margin-top:0.5rem;">Para clinicas e hospitais parceiros</div></div>',
+        unsafe_allow_html=True
+    )
+
+    st.markdown(componente_linha_fina(), unsafe_allow_html=True)
+
+    usuario = st.text_input("UTILIZADOR", placeholder="O teu utilizador", key="emp_usuario")
+    senha = st.text_input("PALAVRA-PASSE", type="password", placeholder="A tua palavra-passe", key="emp_senha")
+
+    st.markdown("<div style='height:1rem;'></div>", unsafe_allow_html=True)
+
+    if st.button("ENTRAR →", key="btn_entrar_empresa", use_container_width=True):
+        if not usuario or not senha:
+            st.error("Preenche os dois campos.")
+        else:
+            autenticado = False
+            try:
+                usuarios_validos = st.secrets["usuarios"]
+                if usuario.strip().lower() in usuarios_validos:
+                    if usuarios_validos[usuario.strip().lower()] == senha:
+                        autenticado = True
+            except Exception:
+                pass
+            if autenticado:
+                st.session_state['ecra'] = 'empresa'
+                st.session_state['empresa_usuario'] = usuario.strip()
+                guardar_sessao_url()
+                st.rerun()
+            else:
+                st.error("Credenciais incorrectas.")
+
+    st.markdown("<div style='height:1.5rem;'></div>", unsafe_allow_html=True)
+
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        if st.button("← VOLTAR", key="btn_voltar_login", use_container_width=True):
+            st.session_state['ecra'] = 'inicio'
+            guardar_sessao_url()
+            st.rerun()
+
+    st.markdown(
+        '<div style="text-align:center;margin-top:3rem;color:#B5B3AD;font-size:0.68rem;letter-spacing:0.12em;text-transform:uppercase;">'
+        'Acesso restrito a profissionais autorizados</div>',
+        unsafe_allow_html=True
+    )
+
+
+def tela_painel_cliente():
+    st.markdown(css_global(), unsafe_allow_html=True)
+    st.markdown(css_painel_cliente(), unsafe_allow_html=True)
+
+    cliente = st.session_state.get('cliente', {})
+    nome = cliente.get('nome', 'Amigo')
+    telefone = cliente.get('telefone', '')
+    primeiro_nome = nome.split()[0] if nome else 'Amigo'
+    saudacao = obter_saudacao()
+
+    col_h1, col_h2 = st.columns([3, 1])
+    with col_h1:
+        st.markdown(componente_logo("pequeno"), unsafe_allow_html=True)
+    with col_h2:
+        st.markdown("<div style='height:0.3rem;'></div>", unsafe_allow_html=True)
+        if st.button("SAIR", key="btn_sair_cliente"):
+            for k in list(st.session_state.keys()):
+                del st.session_state[k]
+            st.query_params.clear()
+            st.rerun()
+
+    st.markdown(componente_linha(), unsafe_allow_html=True)
+
+    estado = obter_estado_conversa(telefone)
+
+    if estado['status'] == 'atendido':
+        status_html = (
+            '<span style="background:#EDF2EE;color:#2D5A3D;border:2px solid #C4D4C8;'
+            'display:inline-block;padding:0.35rem 0.9rem;font-size:0.68rem;font-weight:700;'
+            'letter-spacing:0.1em;text-transform:uppercase;">O RESPONSAVEL ESTA PRONTO</span>'
+        )
+    elif estado['status'] == 'aguardando':
+        status_html = (
+            '<span style="background:#FDF8F0;color:#8A6B3E;border:2px solid #DDD0B8;'
+            'display:inline-block;padding:0.35rem 0.9rem;font-size:0.68rem;font-weight:700;'
+            'letter-spacing:0.1em;text-transform:uppercase;">AGUARDANDO ATENDIMENTO</span>'
+        )
+    else:
+        status_html = (
+            '<span style="background:#F3F2EE;color:#5A5A52;border:2px solid #DDDCD7;'
+            'display:inline-block;padding:0.35rem 0.9rem;font-size:0.68rem;font-weight:700;'
+            'letter-spacing:0.1em;text-transform:uppercase;">RECEPCAO LUCILIO</span>'
+        )
+
+    st.markdown(
+        '<div style="margin-bottom:0.5rem;">'
+        '<div style="font-size:2.2rem;font-weight:900;color:#1A1A18;letter-spacing:-0.04em;line-height:1.1;">'
+        + saudacao + ',<br>' + primeiro_nome + '.</div></div>',
+        unsafe_allow_html=True
+    )
+
+    st.markdown(componente_linha_fina(), unsafe_allow_html=True)
+
+    st.markdown(
+        '<div style="background:#FFFFFF;border:2px solid #DDDCD7;border-left:4px solid #15291C;padding:1.3rem 1.4rem;margin-bottom:1rem;">'
+        '<div style="display:flex;align-items:center;gap:1rem;">'
+        '<div style="width:52px;height:52px;background:#15291C;display:flex;align-items:center;justify-content:center;flex-shrink:0;">'
+        '<span style="color:#D4E7DC;font-weight:800;font-size:0.8rem;letter-spacing:0.05em;">RL</span></div>'
+        '<div style="flex:1;">'
+        '<div style="font-weight:800;color:#1A1A18;font-size:1.1rem;letter-spacing:-0.02em;">Recepcao Lucilio</div>'
+        '<div style="color:#8A8A82;font-size:0.82rem;margin-top:0.2rem;">Consultorio Medico Lucilio — Luanda</div></div>'
+        '<div>' + status_html + '</div>'
+        '</div></div>',
+        unsafe_allow_html=True
+    )
+
+    if estado['status'] == 'sem_contacto':
+        st.markdown(
+            '<div style="color:#5A5A52;font-size:0.9rem;line-height:1.8;margin-bottom:1.5rem;">'
+            'Envia uma mensagem para a recepcao do Consultorio Lucilio. '
+            'Alguem da equipa vai atender-te assim que possivel.</div>',
+            unsafe_allow_html=True
+        )
+
+    fragmento_chat_cliente(telefone)
+
+    st.markdown("<div style='height:1rem;'></div>", unsafe_allow_html=True)
+
+    with st.form(key="form_msg_cliente", clear_on_submit=True):
+        texto_msg = st.text_input(
+            "ESCREVE A TUA MENSAGEM",
+            placeholder="Escreve aqui...",
+            key="input_msg_cliente",
+        )
+
+        col_s1, col_s2 = st.columns([3, 1])
+        with col_s2:
+            enviado = st.form_submit_button("ENVIAR →", use_container_width=True)
+
+        if enviado and texto_msg and texto_msg.strip():
+            enviar_mensagem_cliente(telefone, nome, texto_msg.strip())
+            st.rerun()
+
+    st.markdown(componente_linha(), unsafe_allow_html=True)
+
+    st.markdown(
+        '<div style="background:#FFFFFF;border:2px solid #DDDCD7;padding:1.3rem 1.4rem;margin-bottom:0.6rem;">'
+        '<div style="color:#8A8A82;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.12em;font-weight:700;margin-bottom:0.5rem;">Morada e contacto</div>'
+        '<div style="color:#1A1A18;font-size:0.92rem;line-height:1.7;">Consultorio Medico Lucilio<br>Luanda, Angola<br>'
+        '<span style="color:#8A8A82;">Tel: +244 923 000 000</span><br>'
+        '<span style="color:#8A8A82;">Seg a Sex 07h30-18h — Sab 07h30-14h</span></div></div>',
+        unsafe_allow_html=True
+    )
+
+    st.markdown(componente_footer(), unsafe_allow_html=True)
+    guardar_sessao_url()
+
+
+def tela_painel_empresa():
+    st.markdown(css_global(), unsafe_allow_html=True)
+    st.markdown(css_painel_empresa(), unsafe_allow_html=True)
+
+    usuario = st.session_state.get('empresa_usuario', 'Empresa')
+
+    col_header1, col_header2 = st.columns([3, 1])
+    with col_header1:
+        st.markdown(componente_logo("pequeno"), unsafe_allow_html=True)
+    with col_header2:
+        st.markdown(
+            '<div style="text-align:right;padding-top:0.5rem;">'
+            '<span style="color:#8A8A82;font-size:0.75rem;font-weight:600;letter-spacing:0.05em;">'
+            + usuario.capitalize() + ' — ' + datetime.now().strftime("%d/%m/%Y") + '</span></div>',
+            unsafe_allow_html=True
+        )
+
+    st.markdown(componente_linha(), unsafe_allow_html=True)
+
+    svg_sidebar = '<svg width="24" height="24" viewBox="0 0 44 44" fill="none"><circle cx="22" cy="22" r="16" stroke="#D4E7DC" stroke-width="2.5" fill="none"/><circle cx="22" cy="22" r="8" fill="#C9553A"/><line x1="22" y1="2" x2="22" y2="10" stroke="#D4E7DC" stroke-width="2" stroke-linecap="round"/><line x1="22" y1="34" x2="22" y2="42" stroke="#D4E7DC" stroke-width="2" stroke-linecap="round"/><line x1="2" y1="22" x2="10" y2="22" stroke="#D4E7DC" stroke-width="2" stroke-linecap="round"/><line x1="34" y1="22" x2="42" y2="22" stroke="#D4E7DC" stroke-width="2" stroke-linecap="round"/></svg>'
+
+    with st.sidebar:
+        st.markdown(
+            '<div style="text-align:center;padding:1.2rem 0 1.8rem 0;">'
+            '<div style="width:48px;height:48px;background:#1E3A28;display:inline-flex;align-items:center;justify-content:center;margin-bottom:0.8rem;">'
+            + svg_sidebar + '</div>'
+            '<div style="color:#E8E6E1;font-weight:700;font-size:0.9rem;">' + usuario.capitalize() + '</div>'
+            '<div style="color:#5A6B5E;font-size:0.62rem;margin-top:0.2rem;letter-spacing:0.12em;text-transform:uppercase;font-weight:600;">Recepcao Lucilio</div></div>',
+            unsafe_allow_html=True
+        )
+
+        st.markdown("---")
+
+        if st.button("SAIR", key="btn_sair_empresa", use_container_width=True):
+            for k in list(st.session_state.keys()):
+                del st.session_state[k]
+            st.query_params.clear()
+            st.rerun()
+
+    tab_mensagens, tab_hemograma = st.tabs(["MENSAGENS DE CLIENTES", "ANALISE DE HEMOGRAMA"])
+
+    with tab_mensagens:
+        conversa_activa = st.session_state.get('conversa_activa', None)
+        if conversa_activa:
+            renderizar_conversa_empresa(conversa_activa, usuario)
+        else:
+            fragmento_lista_conversas(usuario)
+
+    with tab_hemograma:
+        renderizar_tab_hemograma()
+
+    guardar_sessao_url()
+
+
 def renderizar_conversa_empresa(telefone, usuario):
-    if st.button("VOLTAR A LISTA", key="btn_voltar_lista"):
+    if st.button("← VOLTAR A LISTA", key="btn_voltar_lista"):
         del st.session_state['conversa_activa']
         guardar_sessao_url()
         st.rerun()
@@ -1242,37 +1249,29 @@ def renderizar_conversa_empresa(telefone, usuario):
     )
 
     if estado['status'] == 'aguardando':
-        if st.button("ATENDER ESTE CLIENTE", key="btn_atender_dentro", use_container_width=True):
+        if st.button("ATENDER ESTE CLIENTE →", key="btn_atender_dentro", use_container_width=True):
             definir_estado_conversa(telefone, 'atendido', usuario.capitalize())
             guardar_sessao_url()
             st.rerun()
 
     st.markdown(componente_linha(), unsafe_allow_html=True)
 
-    renderizar_mensagens_chat(telefone, 'empresa')
+    fragmento_chat_empresa(telefone)
 
     st.markdown("<div style='height:1rem;'></div>", unsafe_allow_html=True)
 
     if estado['status'] == 'atendido':
-        texto_actual = st.session_state.get('texto_resp_empresa_actual', '')
-
         with st.form(key="form_resposta_empresa", clear_on_submit=True):
-            st.markdown(
-                '<div style="color:#8A8A82;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.14em;font-weight:700;margin-bottom:0.8rem;">Responder a ' + nome_cliente.split()[0] + '</div>',
-                unsafe_allow_html=True
-            )
-
             texto_resp = st.text_area(
-                "RESPOSTA",
+                "RESPONDER A " + nome_cliente.split()[0].upper(),
                 placeholder="Escreve a tua resposta...",
                 key="input_resp_empresa",
-                label_visibility="collapsed",
                 height=100
             )
 
             col_r1, col_r2 = st.columns([3, 1])
             with col_r2:
-                enviado = st.form_submit_button("ENVIAR", use_container_width=True)
+                enviado = st.form_submit_button("ENVIAR →", use_container_width=True)
 
             if enviado and texto_resp and texto_resp.strip():
                 enviar_mensagem_empresa(telefone, usuario.capitalize(), texto_resp.strip())
@@ -1387,7 +1386,7 @@ def renderizar_tab_hemograma():
     with st.form(key="form_analise"):
         col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1])
         with col_btn2:
-            submit = st.form_submit_button("ANALISAR HEMOGRAMA", use_container_width=True)
+            submit = st.form_submit_button("ANALISAR HEMOGRAMA →", use_container_width=True)
 
     if submit:
         dados = {
@@ -1472,13 +1471,12 @@ def renderizar_tab_hemograma():
                     unsafe_allow_html=True
                 )
 
-        st.markdown(
-            '<div style="color:#8A8A82;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.14em;font-weight:700;margin-bottom:0.8rem;">Conduta clinica</div>',
-            unsafe_allow_html=True
-        )
-
         if diag_principal in CONDUTAS:
             cond = CONDUTAS[diag_principal]
+            st.markdown(
+                '<div style="color:#8A8A82;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.14em;font-weight:700;margin-bottom:0.8rem;">Conduta clinica</div>',
+                unsafe_allow_html=True
+            )
             if gravidade in ["GRAVE", "CRITICO"]:
                 st.error("**Caso grave:** " + cond['grave'])
             else:
