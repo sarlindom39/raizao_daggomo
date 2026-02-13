@@ -18,6 +18,7 @@ st.set_page_config(
 FICHEIRO_CLIENTES = 'dados_clientes.json'
 FICHEIRO_MENSAGENS = 'mensagens_chat.json'
 FICHEIRO_ESTADO = 'conversas_estado.json'
+FICHEIRO_DIGITANDO = 'digitando_estado.json'
 
 MUNICIPIOS_LISTA = [
     'Belas', 'Cacuaco', 'Catete', 'Cazenga', 'Icolo e Bengo',
@@ -136,8 +137,11 @@ CONDUTAS = {
 
 def carregar_json(ficheiro):
     if os.path.exists(ficheiro):
-        with open(ficheiro, 'r', encoding='utf-8') as f:
-            return json.load(f)
+        try:
+            with open(ficheiro, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except (json.JSONDecodeError, IOError):
+            return {}
     return {}
 
 
@@ -194,6 +198,42 @@ def guardar_estados(dados):
     guardar_json(FICHEIRO_ESTADO, dados)
 
 
+def carregar_digitando():
+    return carregar_json(FICHEIRO_DIGITANDO)
+
+
+def guardar_digitando(dados):
+    guardar_json(FICHEIRO_DIGITANDO, dados)
+
+
+def marcar_digitando(telefone, quem, ativo):
+    dados = carregar_digitando()
+    chave = telefone + '___' + quem
+    if ativo:
+        dados[chave] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    else:
+        if chave in dados:
+            del dados[chave]
+    guardar_digitando(dados)
+
+
+def verificar_digitando(telefone, quem):
+    dados = carregar_digitando()
+    chave = telefone + '___' + quem
+    if chave not in dados:
+        return False
+    try:
+        momento = datetime.strptime(dados[chave], '%Y-%m-%d %H:%M:%S')
+        diferenca = (datetime.now() - momento).total_seconds()
+        if diferenca > 10:
+            del dados[chave]
+            guardar_digitando(dados)
+            return False
+        return True
+    except (ValueError, KeyError):
+        return False
+
+
 def obter_estado_conversa(telefone):
     estados = carregar_estados()
     return estados.get(telefone, {
@@ -233,6 +273,7 @@ def enviar_mensagem_cliente(telefone_cliente, nome_cliente, texto):
     estado = obter_estado_conversa(telefone_cliente)
     if estado['status'] == 'sem_contacto':
         definir_estado_conversa(telefone_cliente, 'aguardando')
+    marcar_digitando(telefone_cliente, 'cliente', False)
 
 
 def enviar_mensagem_empresa(telefone_cliente, nome_atendente, texto):
@@ -247,6 +288,7 @@ def enviar_mensagem_empresa(telefone_cliente, nome_atendente, texto):
         'data': datetime.now().strftime('%d/%m/%Y'),
     })
     guardar_mensagens(mensagens)
+    marcar_digitando(telefone_cliente, 'empresa', False)
 
 
 def contar_nao_lidas_empresa(telefone_cliente):
@@ -318,6 +360,38 @@ def obter_saudacao():
     elif hora < 18:
         return "Boa tarde"
     return "Boa noite"
+
+
+def guardar_sessao_url():
+    params = {}
+    if 'ecra' in st.session_state:
+        params['e'] = st.session_state['ecra']
+    if 'cliente' in st.session_state and st.session_state['cliente']:
+        params['t'] = st.session_state['cliente'].get('telefone', '')
+    if 'empresa_usuario' in st.session_state:
+        params['u'] = st.session_state['empresa_usuario']
+    if 'conversa_activa' in st.session_state:
+        params['ca'] = st.session_state['conversa_activa']
+    st.query_params.update(params)
+
+
+def restaurar_sessao_url():
+    params = st.query_params
+    if 'ecra' not in st.session_state:
+        ecra = params.get('e', 'inicio')
+        st.session_state['ecra'] = ecra
+
+        if ecra == 'cliente' and 't' in params:
+            tel = params['t']
+            clientes = carregar_clientes()
+            if tel in clientes:
+                st.session_state['cliente'] = clientes[tel]
+
+        if ecra == 'empresa' and 'u' in params:
+            st.session_state['empresa_usuario'] = params['u']
+
+        if 'ca' in params:
+            st.session_state['conversa_activa'] = params['ca']
 
 
 @st.cache_resource
@@ -502,6 +576,10 @@ def css_global():
         color: var(--text) !important; font-size: 0.75rem !important; font-weight: 700 !important;
         letter-spacing: 0.14em !important; text-transform: uppercase !important;
     }
+    @keyframes pulsar {
+        0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+        40% { opacity: 1; transform: scale(1); }
+    }
     </style>"""
 
 
@@ -588,6 +666,19 @@ def componente_footer():
     )
 
 
+def componente_digitando(nome):
+    return (
+        '<div style="display:flex;align-items:center;gap:0.6rem;padding:0.8rem 0;">'
+        '<div style="display:flex;gap:4px;">'
+        '<div style="width:6px;height:6px;background:#8A8A82;border-radius:50%;animation:pulsar 1.4s infinite ease-in-out;animation-delay:0s;"></div>'
+        '<div style="width:6px;height:6px;background:#8A8A82;border-radius:50%;animation:pulsar 1.4s infinite ease-in-out;animation-delay:0.2s;"></div>'
+        '<div style="width:6px;height:6px;background:#8A8A82;border-radius:50%;animation:pulsar 1.4s infinite ease-in-out;animation-delay:0.4s;"></div>'
+        '</div>'
+        '<span style="color:#8A8A82;font-size:0.78rem;font-weight:600;font-style:italic;">'
+        + nome + ' esta a escrever</span></div>'
+    )
+
+
 def tela_boas_vindas():
     st.markdown(css_global(), unsafe_allow_html=True)
     st.markdown(css_tela_inicio(), unsafe_allow_html=True)
@@ -635,6 +726,7 @@ def tela_boas_vindas():
             if sucesso:
                 st.session_state['ecra'] = 'cliente'
                 st.session_state['cliente'] = dados
+                guardar_sessao_url()
                 st.rerun()
 
     st.markdown("<div style='height:3rem;'></div>", unsafe_allow_html=True)
@@ -650,6 +742,7 @@ def tela_boas_vindas():
     with col2:
         if st.button("ENTRAR COMO EMPRESA", key="btn_empresa", use_container_width=True):
             st.session_state['ecra'] = 'login_empresa'
+            guardar_sessao_url()
             st.rerun()
 
     st.markdown(componente_footer(), unsafe_allow_html=True)
@@ -695,6 +788,7 @@ def tela_login_empresa():
             if autenticado:
                 st.session_state['ecra'] = 'empresa'
                 st.session_state['empresa_usuario'] = usuario.strip()
+                guardar_sessao_url()
                 st.rerun()
             else:
                 st.error("Credenciais incorrectas.")
@@ -705,6 +799,7 @@ def tela_login_empresa():
     with col2:
         if st.button("VOLTAR", key="btn_voltar_login", use_container_width=True):
             st.session_state['ecra'] = 'inicio'
+            guardar_sessao_url()
             st.rerun()
 
     st.markdown(
@@ -712,6 +807,84 @@ def tela_login_empresa():
         'Acesso restrito a profissionais autorizados</div>',
         unsafe_allow_html=True
     )
+
+
+def renderizar_mensagens_chat(telefone, lado):
+    conversa = obter_conversa(telefone)
+    clientes = carregar_clientes()
+    nome_cliente = clientes.get(telefone, {}).get('nome', 'Cliente')
+    iniciais = ''.join([p[0].upper() for p in nome_cliente.split()[:2]]) if nome_cliente else '??'
+
+    if not conversa:
+        return
+
+    data_anterior = None
+    for msg in conversa:
+        msg_data = msg.get('data', '')
+        if msg_data != data_anterior:
+            data_anterior = msg_data
+            st.markdown(
+                '<div style="text-align:center;margin:1.2rem 0;">'
+                '<span style="background:#F3F2EE;color:#B5B3AD;font-size:0.65rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:0.3rem 1rem;border:1px solid #DDDCD7;">'
+                + msg_data + '</span></div>',
+                unsafe_allow_html=True
+            )
+
+        if lado == 'cliente':
+            if msg['remetente'] == 'cliente':
+                st.markdown(
+                    '<div style="display:flex;justify-content:flex-end;margin-bottom:0.6rem;">'
+                    '<div style="background:#15291C;color:#E8E6E1;padding:0.9rem 1.2rem;max-width:75%;">'
+                    '<div style="font-size:0.9rem;line-height:1.7;font-weight:500;">' + msg['texto'] + '</div>'
+                    '<div style="text-align:right;color:#5A6B5E;font-size:0.65rem;margin-top:0.4rem;font-weight:600;">' + msg['hora'] + '</div>'
+                    '</div></div>',
+                    unsafe_allow_html=True
+                )
+            else:
+                st.markdown(
+                    '<div style="display:flex;justify-content:flex-start;margin-bottom:0.6rem;gap:0.5rem;">'
+                    '<div style="width:28px;height:28px;background:#15291C;display:flex;align-items:center;justify-content:center;color:#D4E7DC;font-weight:800;font-size:0.5rem;flex-shrink:0;margin-top:0.2rem;">RL</div>'
+                    '<div style="background:#FFFFFF;color:#1A1A18;padding:0.9rem 1.2rem;max-width:75%;border:2px solid #DDDCD7;">'
+                    '<div style="color:#8A8A82;font-size:0.65rem;font-weight:700;margin-bottom:0.3rem;">' + msg.get('nome', 'Recepcao') + '</div>'
+                    '<div style="font-size:0.9rem;line-height:1.7;font-weight:500;">' + msg['texto'] + '</div>'
+                    '<div style="color:#B5B3AD;font-size:0.65rem;margin-top:0.4rem;font-weight:600;">' + msg['hora'] + '</div>'
+                    '</div></div>',
+                    unsafe_allow_html=True
+                )
+        else:
+            if msg['remetente'] == 'cliente':
+                st.markdown(
+                    '<div style="display:flex;justify-content:flex-start;margin-bottom:0.6rem;gap:0.5rem;">'
+                    '<div style="width:28px;height:28px;background:#C9553A;display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:0.5rem;flex-shrink:0;margin-top:0.2rem;">'
+                    + iniciais + '</div>'
+                    '<div style="background:#FFFFFF;color:#1A1A18;padding:0.9rem 1.2rem;max-width:75%;border:2px solid #DDDCD7;">'
+                    '<div style="color:#C9553A;font-size:0.65rem;font-weight:700;margin-bottom:0.3rem;">' + msg.get('nome', nome_cliente) + '</div>'
+                    '<div style="font-size:0.9rem;line-height:1.7;font-weight:500;">' + msg['texto'] + '</div>'
+                    '<div style="color:#B5B3AD;font-size:0.65rem;margin-top:0.4rem;font-weight:600;">' + msg['hora'] + '</div>'
+                    '</div></div>',
+                    unsafe_allow_html=True
+                )
+            else:
+                st.markdown(
+                    '<div style="display:flex;justify-content:flex-end;margin-bottom:0.6rem;">'
+                    '<div style="background:#15291C;color:#E8E6E1;padding:0.9rem 1.2rem;max-width:75%;">'
+                    '<div style="color:#5A6B5E;font-size:0.65rem;font-weight:700;margin-bottom:0.3rem;">' + msg.get('nome', 'Recepcao') + '</div>'
+                    '<div style="font-size:0.9rem;line-height:1.7;font-weight:500;">' + msg['texto'] + '</div>'
+                    '<div style="text-align:right;color:#5A6B5E;font-size:0.65rem;margin-top:0.4rem;font-weight:600;">' + msg['hora'] + '</div>'
+                    '</div></div>',
+                    unsafe_allow_html=True
+                )
+
+    if lado == 'cliente':
+        empresa_escrevendo = verificar_digitando(telefone, 'empresa')
+        if empresa_escrevendo:
+            estado = obter_estado_conversa(telefone)
+            nome_quem = estado.get('atendido_por', 'Recepcao')
+            st.markdown(componente_digitando(nome_quem), unsafe_allow_html=True)
+    else:
+        cliente_escrevendo = verificar_digitando(telefone, 'cliente')
+        if cliente_escrevendo:
+            st.markdown(componente_digitando(nome_cliente), unsafe_allow_html=True)
 
 
 def tela_painel_cliente():
@@ -730,16 +903,14 @@ def tela_painel_cliente():
     with col_h2:
         st.markdown("<div style='height:0.3rem;'></div>", unsafe_allow_html=True)
         if st.button("SAIR", key="btn_sair_cliente"):
-            for k in ['ecra', 'cliente']:
-                if k in st.session_state:
-                    del st.session_state[k]
+            for k in list(st.session_state.keys()):
+                del st.session_state[k]
+            st.query_params.clear()
             st.rerun()
 
     st.markdown(componente_linha(), unsafe_allow_html=True)
 
     estado = obter_estado_conversa(telefone)
-    conversa = obter_conversa(telefone)
-    n_nao_lidas = contar_nao_lidas_cliente(telefone)
 
     if estado['status'] == 'atendido':
         status_html = (
@@ -806,44 +977,16 @@ def tela_painel_cliente():
             unsafe_allow_html=True
         )
 
+    conversa = obter_conversa(telefone)
     if conversa:
         st.markdown(
             '<div style="color:#8A8A82;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.14em;font-weight:700;margin-bottom:0.8rem;">Conversa</div>',
             unsafe_allow_html=True
         )
 
-        data_anterior = None
-        for msg in conversa:
-            msg_data = msg.get('data', '')
-            if msg_data != data_anterior:
-                data_anterior = msg_data
-                st.markdown(
-                    '<div style="text-align:center;margin:1.2rem 0;">'
-                    '<span style="background:#F3F2EE;color:#B5B3AD;font-size:0.65rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:0.3rem 1rem;border:1px solid #DDDCD7;">'
-                    + msg_data + '</span></div>',
-                    unsafe_allow_html=True
-                )
-
-            if msg['remetente'] == 'cliente':
-                st.markdown(
-                    '<div style="display:flex;justify-content:flex-end;margin-bottom:0.6rem;">'
-                    '<div style="background:#15291C;color:#E8E6E1;padding:0.9rem 1.2rem;max-width:75%;">'
-                    '<div style="font-size:0.9rem;line-height:1.7;font-weight:500;">' + msg['texto'] + '</div>'
-                    '<div style="text-align:right;color:#5A6B5E;font-size:0.65rem;margin-top:0.4rem;font-weight:600;">' + msg['hora'] + '</div>'
-                    '</div></div>',
-                    unsafe_allow_html=True
-                )
-            else:
-                st.markdown(
-                    '<div style="display:flex;justify-content:flex-start;margin-bottom:0.6rem;gap:0.5rem;">'
-                    '<div style="width:28px;height:28px;background:#15291C;display:flex;align-items:center;justify-content:center;color:#D4E7DC;font-weight:800;font-size:0.5rem;flex-shrink:0;margin-top:0.2rem;">RL</div>'
-                    '<div style="background:#FFFFFF;color:#1A1A18;padding:0.9rem 1.2rem;max-width:75%;border:2px solid #DDDCD7;">'
-                    '<div style="color:#8A8A82;font-size:0.65rem;font-weight:700;margin-bottom:0.3rem;">' + msg.get('nome', 'Recepcao') + '</div>'
-                    '<div style="font-size:0.9rem;line-height:1.7;font-weight:500;">' + msg['texto'] + '</div>'
-                    '<div style="color:#B5B3AD;font-size:0.65rem;margin-top:0.4rem;font-weight:600;">' + msg['hora'] + '</div>'
-                    '</div></div>',
-                    unsafe_allow_html=True
-                )
+    zona_chat = st.container()
+    with zona_chat:
+        renderizar_mensagens_chat(telefone, 'cliente')
 
     st.markdown("<div style='height:1rem;'></div>", unsafe_allow_html=True)
 
@@ -868,9 +1011,11 @@ def tela_painel_cliente():
             enviar_mensagem_cliente(telefone, nome, texto_msg.strip())
             st.rerun()
 
-    if n_nao_lidas > 0:
-        if st.button("ACTUALIZAR CONVERSA", key="btn_refresh", use_container_width=True):
-            st.rerun()
+    st.markdown(
+        '<div style="text-align:center;padding:1rem 0;">'
+        '<div style="color:#B5B3AD;font-size:0.72rem;font-weight:500;">A conversa actualiza a cada 5 segundos</div></div>',
+        unsafe_allow_html=True
+    )
 
     st.markdown(componente_linha(), unsafe_allow_html=True)
 
@@ -889,6 +1034,11 @@ def tela_painel_cliente():
     )
 
     st.markdown(componente_footer(), unsafe_allow_html=True)
+
+    guardar_sessao_url()
+
+    time.sleep(5)
+    st.rerun()
 
 
 def tela_painel_empresa():
@@ -924,15 +1074,10 @@ def tela_painel_empresa():
 
         st.markdown("---")
 
-        if st.button("ACTUALIZAR", key="btn_refresh_empresa", use_container_width=True):
-            st.rerun()
-
-        st.markdown("---")
-
         if st.button("SAIR", key="btn_sair_empresa", use_container_width=True):
-            for k in ['ecra', 'empresa_usuario', 'conversa_activa', 'empresa_tab']:
-                if k in st.session_state:
-                    del st.session_state[k]
+            for k in list(st.session_state.keys()):
+                del st.session_state[k]
+            st.query_params.clear()
             st.rerun()
 
     tab_mensagens, tab_hemograma = st.tabs(["MENSAGENS DE CLIENTES", "ANALISE DE HEMOGRAMA"])
@@ -942,6 +1087,13 @@ def tela_painel_empresa():
 
     with tab_hemograma:
         renderizar_tab_hemograma()
+
+    guardar_sessao_url()
+
+    conversa_activa = st.session_state.get('conversa_activa', None)
+    if conversa_activa:
+        time.sleep(4)
+        st.rerun()
 
 
 def renderizar_tab_mensagens(usuario):
@@ -1009,7 +1161,6 @@ def renderizar_tab_mensagens(usuario):
             )
 
         iniciais = ''.join([p[0].upper() for p in c['nome'].split()[:2]]) if c['nome'] else '??'
-
         ultima_preview = c['ultima_msg'][:60] + ('...' if len(c['ultima_msg']) > 60 else '')
 
         st.markdown(
@@ -1034,10 +1185,12 @@ def renderizar_tab_mensagens(usuario):
                 if st.button("ATENDER " + c['nome'].split()[0].upper(), key="btn_atender_" + c['telefone'], use_container_width=True):
                     definir_estado_conversa(c['telefone'], 'atendido', usuario.capitalize())
                     st.session_state['conversa_activa'] = c['telefone']
+                    guardar_sessao_url()
                     st.rerun()
             else:
                 if st.button("ABRIR CONVERSA", key="btn_abrir_" + c['telefone'], use_container_width=True):
                     st.session_state['conversa_activa'] = c['telefone']
+                    guardar_sessao_url()
                     st.rerun()
         with col_a2:
             if c['status'] == 'atendido':
@@ -1052,13 +1205,13 @@ def renderizar_tab_mensagens(usuario):
 def renderizar_conversa_empresa(telefone, usuario):
     if st.button("VOLTAR A LISTA", key="btn_voltar_lista"):
         del st.session_state['conversa_activa']
+        guardar_sessao_url()
         st.rerun()
 
     clientes = carregar_clientes()
     info_cliente = clientes.get(telefone, {})
     nome_cliente = info_cliente.get('nome', 'Desconhecido')
     municipio_cliente = info_cliente.get('municipio', '')
-    conversa = obter_conversa(telefone)
     estado = obter_estado_conversa(telefone)
 
     iniciais = ''.join([p[0].upper() for p in nome_cliente.split()[:2]]) if nome_cliente else '??'
@@ -1091,49 +1244,18 @@ def renderizar_conversa_empresa(telefone, usuario):
     if estado['status'] == 'aguardando':
         if st.button("ATENDER ESTE CLIENTE", key="btn_atender_dentro", use_container_width=True):
             definir_estado_conversa(telefone, 'atendido', usuario.capitalize())
+            guardar_sessao_url()
             st.rerun()
 
     st.markdown(componente_linha(), unsafe_allow_html=True)
 
-    if conversa:
-        data_anterior = None
-        for msg in conversa:
-            msg_data = msg.get('data', '')
-            if msg_data != data_anterior:
-                data_anterior = msg_data
-                st.markdown(
-                    '<div style="text-align:center;margin:1.2rem 0;">'
-                    '<span style="background:#F3F2EE;color:#B5B3AD;font-size:0.65rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:0.3rem 1rem;border:1px solid #DDDCD7;">'
-                    + msg_data + '</span></div>',
-                    unsafe_allow_html=True
-                )
-
-            if msg['remetente'] == 'cliente':
-                st.markdown(
-                    '<div style="display:flex;justify-content:flex-start;margin-bottom:0.6rem;gap:0.5rem;">'
-                    '<div style="width:28px;height:28px;background:#C9553A;display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:0.5rem;flex-shrink:0;margin-top:0.2rem;">'
-                    + iniciais + '</div>'
-                    '<div style="background:#FFFFFF;color:#1A1A18;padding:0.9rem 1.2rem;max-width:75%;border:2px solid #DDDCD7;">'
-                    '<div style="color:#C9553A;font-size:0.65rem;font-weight:700;margin-bottom:0.3rem;">' + msg.get('nome', nome_cliente) + '</div>'
-                    '<div style="font-size:0.9rem;line-height:1.7;font-weight:500;">' + msg['texto'] + '</div>'
-                    '<div style="color:#B5B3AD;font-size:0.65rem;margin-top:0.4rem;font-weight:600;">' + msg['hora'] + '</div>'
-                    '</div></div>',
-                    unsafe_allow_html=True
-                )
-            else:
-                st.markdown(
-                    '<div style="display:flex;justify-content:flex-end;margin-bottom:0.6rem;">'
-                    '<div style="background:#15291C;color:#E8E6E1;padding:0.9rem 1.2rem;max-width:75%;">'
-                    '<div style="color:#5A6B5E;font-size:0.65rem;font-weight:700;margin-bottom:0.3rem;">' + msg.get('nome', usuario.capitalize()) + '</div>'
-                    '<div style="font-size:0.9rem;line-height:1.7;font-weight:500;">' + msg['texto'] + '</div>'
-                    '<div style="text-align:right;color:#5A6B5E;font-size:0.65rem;margin-top:0.4rem;font-weight:600;">' + msg['hora'] + '</div>'
-                    '</div></div>',
-                    unsafe_allow_html=True
-                )
+    renderizar_mensagens_chat(telefone, 'empresa')
 
     st.markdown("<div style='height:1rem;'></div>", unsafe_allow_html=True)
 
     if estado['status'] == 'atendido':
+        texto_actual = st.session_state.get('texto_resp_empresa_actual', '')
+
         with st.form(key="form_resposta_empresa", clear_on_submit=True):
             st.markdown(
                 '<div style="color:#8A8A82;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.14em;font-weight:700;margin-bottom:0.8rem;">Responder a ' + nome_cliente.split()[0] + '</div>',
@@ -1154,7 +1276,13 @@ def renderizar_conversa_empresa(telefone, usuario):
 
             if enviado and texto_resp and texto_resp.strip():
                 enviar_mensagem_empresa(telefone, usuario.capitalize(), texto_resp.strip())
+                marcar_digitando(telefone, 'empresa', False)
                 st.rerun()
+
+        if texto_resp and texto_resp.strip():
+            marcar_digitando(telefone, 'empresa', True)
+        else:
+            marcar_digitando(telefone, 'empresa', False)
     else:
         st.markdown(
             '<div style="background:#FDF8F0;border:2px solid #DDD0B8;padding:1rem 1.4rem;">'
@@ -1399,6 +1527,7 @@ def renderizar_tab_hemograma():
 
 
 def main():
+    restaurar_sessao_url()
     ecra = st.session_state.get('ecra', 'inicio')
     if ecra == 'inicio':
         tela_boas_vindas()
